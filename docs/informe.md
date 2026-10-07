@@ -4,17 +4,17 @@
 
 Se trabajó sobre el fork configurado en origin: https://github.com/Ninaswiftie09/duckdb. El repositorio del docente está configurado como upstream. Se levantaron JupyterLab y Metabase con Docker Compose y se comprobó que ambos respondieran por HTTP. Las versiones del ambiente están fijadas en requirements.txt y en los Dockerfiles.
 
-Un ambiente reproducible permite repetir el análisis con las mismas herramientas y versiones. Se reduce el riesgo de obtener resultados distintos por cambios en las dependencias. data/raw conserva los archivos originales; data/processed contiene las tablas y archivos derivados; scripts contiene los procesos ejecutables; sql contiene las consultas; notebooks permite explorar los resultados; docs contiene la documentación y evidencia.
+Un ambiente reproducible permite repetir el análisis con las mismas herramientas y versiones. Se reduce el riesgo de obtener resultados distintos por cambios en las dependencias. data/raw conserva los archivos originales. data/processed contiene las tablas y archivos derivados. Scripts contiene los procesos ejecutables. sql contiene las consultas. notebooks permite explorar los resultados. docs contiene la documentación y evidencia.
 
 ## Ejercicio 2: descarga inicial
 
-Se reemplazó el año fijo del script por el argumento --years, cuyo valor inicial es 2026. Se obtiene el inventario desde los enlaces oficiales de la TLC. Se agregó un encabezado User-Agent porque el sitio rechazó inicialmente las solicitudes. Se conservaron las descargas por bloques y archivos temporales, y se agregaron reintentos, validación Parquet, cantidad de registros, tamaño y SHA-256. Los errores HTTP producen un fallo; no se clasifican como meses no publicados. Los meses no publicados se determinan usando el inventario oficial.
+Se reemplazó el año fijo del script por el argumento --years, cuyo valor inicial es 2026. Se obtiene el inventario desde los enlaces oficiales de la TLC. Se agregó un encabezado User-Agent porque el sitio rechazó inicialmente las solicitudes. Se conservaron las descargas por bloques y archivos temporales, y se agregaron reintentos, validación Parquet, cantidad de registros, tamaño y SHA-256. Los errores HTTP producen un fallo. No se clasifican como meses no publicados. Los meses no publicados se determinan usando el inventario oficial.
 
-La integridad estructural se verifica con PyArrow; la huella SHA-256 permite detectar cambios posteriores, pero no demuestra por sí sola que la TLC publicó datos completos. La completitud de la descarga significa que cada enlace publicado tiene un archivo local válido. Los manifiestos download_*.json registran la cobertura por etapa. Una segunda ejecución registra existing y conserva las huellas.
+La integridad estructural se verifica con PyArrow. La huella SHA-256 permite detectar cambios posteriores, pero no demuestra por sí sola que la TLC publicó datos completos. La completitud de la descarga significa que cada enlace publicado tiene un archivo local válido. Los manifiestos download_*.json registran la cobertura por etapa. Una segunda ejecución registra existing y conserva las huellas.
 
 ## Ejercicio 3: consulta directa y calidad
 
-Se consultó read_parquet con union_by_name=true. Las columnas de inicio y fin de yellow y green se unificaron con COALESCE. El año y mes de origen se extraen del nombre del archivo para detectar fechas fuera del periodo. cbd_congestion_fee no aparece en 2024; union_by_name conserva esa diferencia como NULL.
+Se consultó read_parquet con union_by_name=true. Las columnas de inicio y fin de yellow y green se unificaron con COALESCE. El año y mes de origen se extraen del nombre del archivo para detectar fechas fuera del periodo. cbd_congestion_fee no aparece en 2024. union_by_name conserva esa diferencia como NULL.
 
 | taxi | source_year | files | rows | first_pickup | last_pickup |
 | --- | --- | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ Los tipos y columnas originales aparecen en results/2024_2025_2026/schema.csv y 
 | yellow | 2025 | 48,722,602 | 0 | 214 | 1,402,958 | 564,705 | 980,522 | 11,611,894 | 260,062 | 3,854 |
 | yellow | 2026 | 29,703,355 | 0 | 146 | 952,231 | 381,810 | 167,093 | 7,716,688 | 91,359 | 1,822 |
 
-Se conservaron todos los archivos originales. Para los indicadores se usó trips_clean: fecha dentro del año y mes del archivo, distancia mayor que 0 y hasta 100 millas, duración mayor que 0 y hasta 180 minutos y pago total mayor que 0 y hasta 500 USD. Los límites son decisiones de análisis y pueden excluir viajes reales largos o caros; no se presentan como reglas oficiales. No se imputaron pasajeros ni propinas. Los problemas de calidad se cuentan por separado y pueden superponerse, por lo que no deben sumarse para calcular registros excluidos. Un pago de cero o negativo puede corresponder a un viaje sin cargo, una disputa o un reembolso; se excluye del indicador de viajes pagados, sin afirmar que todos esos registros sean errores. No se eliminaron duplicados porque no existe una identificación única de viaje.
+Se conservaron todos los archivos originales. Para los indicadores se usó trips_clean: fecha dentro del año y mes del archivo, distancia mayor que 0 y hasta 100 millas, duración mayor que 0 y hasta 180 minutos y pago total mayor que 0 y hasta 500 USD. Los límites son decisiones de análisis y pueden excluir viajes reales largos o caros. No se presentan como reglas oficiales. No se imputaron pasajeros ni propinas. Los problemas de calidad se cuentan por separado y pueden superponerse, por lo que no deben sumarse para calcular registros excluidos. Un pago de cero o negativo puede corresponder a un viaje sin cargo, una disputa o un reembolso. Se excluye del indicador de viajes pagados, sin afirmar que todos esos registros sean errores. No se eliminaron duplicados porque no existe una identificación única de viaje.
 
 ## Ejercicio 4: preguntas y hallazgos
 
@@ -68,13 +68,13 @@ En yellow, la hora con más viajes es 18:00, con 7,725,998 viajes. Esto permite 
 
 En green, la hora con más viajes es 17:00, con 121,523 viajes. Esto permite identificar la hora de mayor actividad dentro de los registros analizados, sin afirmar una causa.
 
-Los archivos amarillos contienen 119,595,677 registros y los verdes 1,588,707. El volumen amarillo es 75.28 veces el verde; esto describe estos archivos y no toda la movilidad de Nueva York.
+Los archivos amarillos contienen 119,595,677 registros y los verdes 1,588,707. El volumen amarillo es 75.28 veces el verde. Esto describe estos archivos y no toda la movilidad de Nueva York.
 
 En yellow, el mes con más viajes filtrados fue 2025-05, con 4,283,501 viajes. Se mantiene la serie mensual para observar si el máximo es parte de un patrón repetido.
 
 En yellow, se encontraron 780 fechas fuera del periodo del archivo y 23,419,814 valores de pasajeros faltantes. Se filtran las fechas inconsistentes y se conserva el dato de pasajeros sin imputación.
 
-La zona de inicio más frecuente en yellow tiene ID 237, con 5,153,451 viajes filtrados. Se mantiene el ID oficial; no se asigna un nombre de barrio sin una tabla de referencia.
+La zona de inicio más frecuente en yellow tiene ID 237, con 5,153,451 viajes filtrados. Se mantiene el ID oficial. No se asigna un nombre de barrio sin una tabla de referencia.
 
 En yellow 2024, la mediana de distancia fue 1.80 millas y el percentil 95 fue 14.44. La mediana del pago fue 21.10 USD y el percentil 95 fue 82.64 USD. La separación entre mediana y percentil 95 muestra que los valores altos no describen el viaje habitual.
 
@@ -86,7 +86,7 @@ En green, el mes con más viajes filtrados fue 2024-05, con 57,428 viajes. Se ma
 
 En green, se encontraron 510 fechas fuera del periodo del archivo y 122,983 valores de pasajeros faltantes. Se filtran las fechas inconsistentes y se conserva el dato de pasajeros sin imputación.
 
-La zona de inicio más frecuente en green tiene ID 74, con 376,372 viajes filtrados. Se mantiene el ID oficial; no se asigna un nombre de barrio sin una tabla de referencia.
+La zona de inicio más frecuente en green tiene ID 74, con 376,372 viajes filtrados. Se mantiene el ID oficial. No se asigna un nombre de barrio sin una tabla de referencia.
 
 En green 2024, la mediana de distancia fue 1.97 millas y el percentil 95 fue 8.62. La mediana del pago fue 19.25 USD y el percentil 95 fue 55.24 USD. La separación entre mediana y percentil 95 muestra que los valores altos no describen el viaje habitual.
 
@@ -96,13 +96,13 @@ En green 2026, la mediana de distancia fue 2.14 millas y el percentil 95 fue 10.
 
 ## Ejercicio 5: incorporación de 2024
 
-Se ejecutó --years 2024 2026 después de la descarga inicial y se confirmó la cobertura conjunta con coverage.sql. Los 24 archivos de 2024 se incorporaron sin eliminar los de 2026. Se ejecutaron las mismas consultas sobre el conjunto ampliado; sus resultados están en results/2024_2026. La selección de archivos y union_by_name permiten agregar años sin reescribir las consultas. comparable.sql produce una tabla vacía hasta que estén presentes los tres años; esa consulta fue diseñada para la comparación final.
+Se ejecutó --years 2024 2026 después de la descarga inicial y se confirmó la cobertura conjunta con coverage.sql. Los 24 archivos de 2024 se incorporaron sin eliminar los de 2026. Se ejecutaron las mismas consultas sobre el conjunto ampliado. Sus resultados están en results/2024_2026. La selección de archivos y union_by_name permiten agregar años sin reescribir las consultas. comparable.sql produce una tabla vacía hasta que estén presentes los tres años. Esa consulta fue diseñada para la comparación final.
 
 ## Ejercicio 6: benchmark
 
 Se usaron los datos de 2024 y 2026. Se evaluaron 2, 12 y todos los archivos de esos años. Los prefijos se ordenan por año, mes y tipo para incluir ambos tipos de taxi. No son muestras aleatorias. Para cada tamaño se creó una tabla con todas las columnas normalizadas. Se midieron monthly.sql, hourly.sql y payments.sql con los mismos filtros y se comprobó que sus resultados coincidieran dentro de una tolerancia numérica.
 
-Se ejecutó una consulta de calentamiento por modo y luego tres repeticiones, alternando el orden. Se midió ejecución y recuperación de resultados; se excluyó la creación de vistas de cada medición. Se fijaron cuatro hilos y un límite de memoria de 2 GB. La caché del sistema operativo no se vació. Los resultados representan consultas repetidas con caché caliente, no lecturas en frío. El tiempo de materialización se registró por separado.
+Se ejecutó una consulta de calentamiento por modo y luego tres repeticiones, alternando el orden. Se midió ejecución y recuperación de resultados. Se excluyó la creación de vistas de cada medición. Se fijaron cuatro hilos y un límite de memoria de 2 GB. La caché del sistema operativo no se vació. Los resultados representan consultas repetidas con caché caliente, no lecturas en frío. El tiempo de materialización se registró por separado.
 
 | files | rows | query | mode | median | min | max |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -161,27 +161,27 @@ Los tiempos cambian con el volumen, la compresión, el tipo de consulta y la cac
 
 ## Ejercicio 7: indicadores y tablero
 
-Se definieron doce preguntas y seis indicadores: cantidad mensual de viajes, pago promedio, distancia promedio, duración promedio, viajes por hora y formas de pago. Cada tarjeta usa una consulta en sql/indicator_*.sql. El tablero se creó en Metabase y su verificación está en dashboard/metabase_validation.json. dashboard/dashboard.png permite revisar los seis indicadores sin abrir el servicio. Los indicadores se calculan con datos filtrados; las cifras de coverage corresponden a datos originales.
+Se definieron doce preguntas y seis indicadores: cantidad mensual de viajes, pago promedio, distancia promedio, duración promedio, viajes por hora y formas de pago. Cada tarjeta usa una consulta en sql/indicator_*.sql. El tablero se creó en Metabase y su verificación está en dashboard/metabase_validation.json. dashboard/dashboard.png permite revisar los seis indicadores sin abrir el servicio. Los indicadores se calculan con datos filtrados. Las cifras de coverage corresponden a datos originales.
 
 Para yellow, se analizaron 113,898,370 viajes después de los filtros. El pago promedio ponderado fue 28.71 USD, la distancia promedio 3.47 millas y la duración promedio 17.23 minutos. La ponderación usa la cantidad de viajes de cada mes.
 
-En yellow, el código de pago más frecuente es 1, con 78,948,755 viajes (69.32% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año; el código 1 identifica tarjeta.
+En yellow, el código de pago más frecuente es 1, con 78,948,755 viajes (69.32% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año. El código 1 identifica tarjeta.
 
-En yellow 2024, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 25.17%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.
+En yellow 2024, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 25.17%. Se consideran únicamente tarifas positivas. No se extiende a propinas en efectivo.
 
-En yellow 2025, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 25.48%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.
+En yellow 2025, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 25.48%. Se consideran únicamente tarifas positivas. No se extiende a propinas en efectivo.
 
-En yellow 2026, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 25.10%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.
+En yellow 2026, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 25.10%. Se consideran únicamente tarifas positivas. No se extiende a propinas en efectivo.
 
 Para green, se analizaron 1,503,848 viajes después de los filtros. El pago promedio ponderado fue 24.76 USD, la distancia promedio 3.12 millas y la duración promedio 15.62 minutos. La ponderación usa la cantidad de viajes de cada mes.
 
-En green, el código de pago más frecuente es 1, con 1,025,479 viajes (68.19% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año; el código 1 identifica tarjeta.
+En green, el código de pago más frecuente es 1, con 1,025,479 viajes (68.19% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año. El código 1 identifica tarjeta.
 
-En green 2024, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 22.37%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.
+En green 2024, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 22.37%. Se consideran únicamente tarifas positivas. No se extiende a propinas en efectivo.
 
-En green 2025, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 22.50%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.
+En green 2025, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 22.50%. Se consideran únicamente tarifas positivas. No se extiende a propinas en efectivo.
 
-En green 2026, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 22.95%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.
+En green 2026, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 22.95%. Se consideran únicamente tarifas positivas. No se extiende a propinas en efectivo.
 
 ## Ejercicio 8: tres años y comparación temporal
 

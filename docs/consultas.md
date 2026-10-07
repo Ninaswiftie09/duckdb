@@ -6,7 +6,7 @@ Las consultas se ejecutan sobre todos los archivos yellow y green de los años s
 
 Se usa el volumen mensual para observar la demanda.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
 
 ```sql
 SELECT taxi, source_year, source_month, count(*) AS trips,
@@ -20,7 +20,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
 
 Se compara el tamaño de ambos servicios con el mismo periodo.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/coverage.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/coverage.csv.
 
 ```sql
 SELECT taxi, source_year, count(DISTINCT source_file) AS files,
@@ -32,7 +32,7 @@ FROM trips_raw GROUP BY ALL ORDER BY taxi, source_year
 
 Se agrupa por hora de inicio para identificar horarios de mayor actividad.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/hourly.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/hourly.csv.
 
 ```sql
 SELECT taxi, hour(pickup) AS hour, count(*) AS trips
@@ -43,7 +43,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, hour
 
 Se usa el promedio y la mediana del pago total en USD.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
 
 ```sql
 SELECT taxi, source_year, source_month, count(*) AS trips,
@@ -57,7 +57,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
 
 Se compara la distancia en millas entre tipos de taxi.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
 
 ```sql
 SELECT taxi, source_year, source_month, count(*) AS trips,
@@ -71,7 +71,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
 
 Se calcula la diferencia entre las horas de inicio y fin en minutos.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
 
 ```sql
 SELECT taxi, source_year, source_month, count(*) AS trips,
@@ -85,7 +85,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
 
 Se cuentan los viajes por código de pago.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/payments.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/payments.csv.
 
 ```sql
 SELECT taxi, source_year, payment_type, count(*) AS trips,
@@ -98,7 +98,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, payment_type
 
 Se limita a tarjeta porque las propinas en efectivo no quedan registradas.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/payments.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/payments.csv.
 
 ```sql
 SELECT taxi, source_year, payment_type, count(*) AS trips,
@@ -111,7 +111,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, payment_type
 
 Se seleccionan las diez zonas con más viajes por tipo de taxi.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/zones.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/zones.csv.
 
 ```sql
 SELECT taxi, pickup_zone, count(*) AS trips
@@ -123,7 +123,7 @@ ORDER BY taxi, trips DESC
 
 Se usan percentiles para observar la distribución y reducir la dependencia del promedio.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/distribution.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/distribution.csv.
 
 ```sql
 SELECT taxi, source_year,
@@ -137,7 +137,7 @@ FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year
 
 Se cuentan problemas por separado antes de filtrar los datos.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/quality.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/quality.csv.
 
 ```sql
 SELECT taxi, source_year, count(*) AS rows,
@@ -156,7 +156,7 @@ FROM trips_raw GROUP BY ALL ORDER BY taxi, source_year
 
 Se comparan únicamente los meses presentes en los tres años.
 
-Fuente: trips_raw para coverage y quality; trips_clean para las demás. Resultado: docs/results/2024_2025_2026/comparable.csv.
+Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/comparable.csv.
 
 ```sql
 WITH monthly AS (
@@ -178,7 +178,7 @@ GROUP BY ALL ORDER BY taxi, source_year
 
 ## Columnas, tipos y muestra
 
-schema.csv proviene de DESCRIBE SELECT * FROM read_parquet(lista_archivos, union_by_name=true). sample.csv proviene de SELECT * FROM trips_raw ORDER BY source_file, pickup LIMIT 10. Se obtienen los tipos originales y diez registros ordenados; la muestra no es aleatoria ni representativa.
+schema.csv proviene de DESCRIBE SELECT * FROM read_parquet(lista_archivos, union_by_name=true). sample.csv proviene de SELECT * FROM trips_raw ORDER BY source_file, pickup LIMIT 10. Se obtienen los tipos originales y diez registros ordenados. La muestra no es aleatoria ni representativa.
 
 ## Transformaciones
 
@@ -186,4 +186,4 @@ sql/normalize.sql contiene la lectura, extracción del tipo y periodo de origen,
 
 ## Benchmark
 
-Se reutilizan monthly.sql, hourly.sql y payments.sql. Solo cambia la fuente de trips_clean entre trips_raw y trips_materialized; los filtros y agregaciones se mantienen. benchmark_runs.csv contiene todas las repeticiones; benchmark_summary.csv contiene mediana, mínimo y máximo; materialization.csv contiene el costo de crear cada tabla.
+Se reutilizan monthly.sql, hourly.sql y payments.sql. Solo cambia la fuente de trips_clean entre trips_raw y trips_materialized. Los filtros y agregaciones se mantienen. benchmark_runs.csv contiene todas las repeticiones. benchmark_summary.csv contiene mediana, mínimo y máximo. materialization.csv contiene el costo de crear cada tabla.

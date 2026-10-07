@@ -34,7 +34,7 @@ JupyterLab está en http://localhost:8888 y Metabase en http://localhost:3000. L
 docker compose exec -T lab python -c "import requests; print(requests.get('http://localhost:8888/api/status').status_code); print(requests.get('http://metabase:3000/api/health').json())"
 ```
 
-Se espera 200 para Jupyter y status: ok para Metabase. Para revisar un inicio pendiente se usa `docker compose logs --tail 50 metabase`. Para detener el ambiente se usa `docker compose down`; no se agrega `-v` si se desea conservar la configuración de Metabase.
+Se espera 200 para Jupyter y status: ok para Metabase. Para revisar un inicio pendiente se usa `docker compose logs --tail 50 metabase`. Para detener el ambiente se usa `docker compose down`. No se agrega `-v` si se desea conservar la configuración de Metabase.
 
 El ambiente incluye Python, DuckDB, JupyterLab, Pandas, PyArrow, Matplotlib, Requests y Metabase con el driver DuckDB. Las versiones están fijadas en requirements.txt y los Dockerfiles. Se usa un ambiente reproducible para mantener las mismas herramientas y repetir el análisis con menos diferencias entre equipos.
 
@@ -49,7 +49,7 @@ docker compose exec -T lab python scripts/download_data.py --years 2024 2026
 docker compose exec -T lab python scripts/analyze.py --years 2024 2026
 ```
 
-El descargador consulta los enlaces oficiales, descarga todos los meses publicados y verifica la estructura Parquet. Para 2024 y 2025 exige doce meses por tipo; para 2026 registra los meses aún no publicados. Cada etapa genera un manifiesto en docs/download_*.json con URL, tamaño, registros, SHA-256 y estado downloaded o existing. Los errores de red no se confunden con archivos no publicados. `--taxi yellow` o `--taxi green` limita el tipo; `--workers` controla las descargas simultáneas. No se ejecutan dos descargadores a la vez.
+El descargador consulta los enlaces oficiales, descarga todos los meses publicados y verifica la estructura Parquet. Para 2024 y 2025 exige doce meses por tipo. Para 2026 registra los meses aún no publicados. Cada etapa genera un manifiesto en docs/download_*.json con URL, tamaño, registros, SHA-256 y estado downloaded o existing. Los errores de red no se confunden con archivos no publicados. `--taxi yellow` o `--taxi green` limita el tipo. `--workers` controla las descargas simultáneas. No se ejecutan dos descargadores a la vez.
 
 Se conserva data/raw/<tipo>/<año>/<archivo>.parquet. Un archivo existente se valida y se omite. Si un archivo está corrupto, el comando falla y se debe revisar ese archivo antes de repetir la descarga. El script no elimina archivos originales existentes.
 
@@ -92,7 +92,7 @@ docker compose exec -T lab python scripts/setup_metabase.py
 
 Se espera a que /api/health devuelva status: ok antes del último comando. El script configura una instalación nueva de Metabase, conecta la base, crea las seis tarjetas y verifica que sus consultas respondan. Si ya existe la configuración del laboratorio, se actualizan las tarjetas. El usuario local y su contraseña aleatoria se guardan en data/processed/metabase_credentials.json, que no se incluye en Git. Si se usa una instalación ya configurada por otra persona, se deben proporcionar MB_EMAIL y MB_PASSWORD al contenedor.
 
-La conexión usa /workspace/data/processed/taxi.duckdb en modo de solo lectura. El tablero y la validación de sus tarjetas están registrados en docs/dashboard/metabase_validation.json. No se debe escribir en la base mientras Metabase la usa; se detiene el servicio antes de actualizarla.
+La conexión usa /workspace/data/processed/taxi.duckdb en modo de solo lectura. El tablero y la validación de sus tarjetas están registrados en docs/dashboard/metabase_validation.json. No se debe escribir en la base mientras Metabase la usa. Se detiene el servicio antes de actualizarla.
 
 ## Cómo generar el informe y ejecutar el notebook
 
@@ -106,7 +106,7 @@ El informe requiere las salidas de las tres etapas y del benchmark. El notebook 
 
 La verificación final compara la cantidad de registros con los manifiestos, revisa las huellas de archivos anteriores, comprueba que los indicadores sumen el mismo total de viajes válidos y confirma las 54 mediciones y las seis tarjetas de Metabase. El resumen queda en docs/validation.json.
 
-Para repetir todo el flujo se usan los comandos anteriores en orden. Se conserva la configuración de Metabase entre ejecuciones y se revisan los manifiestos para verificar que las descargas anteriores quedaron como existing. El año 2026 es parcial; la comparación temporal usa únicamente los meses presentes en los tres años.
+Para repetir todo el flujo se usan los comandos anteriores en orden. Se conserva la configuración de Metabase entre ejecuciones y se revisan los manifiestos para verificar que las descargas anteriores quedaron como existing. El año 2026 es parcial. La comparación temporal usa únicamente los meses presentes en los tres años.
 
 También se puede ejecutar la descarga, análisis por etapas, benchmark, imagen del tablero e informe con un solo comando, después de detener Metabase:
 
