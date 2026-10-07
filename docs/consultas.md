@@ -1,26 +1,10 @@
-# Documentación de consultas
+# Consultas
 
-Las consultas se ejecutan sobre todos los archivos yellow y green de los años seleccionados. Cada salida se guarda en docs/results/<años>/<consulta>.csv. Los resultados por etapa permiten revisar 2026, 2024 con 2026 y los tres años. El informe explica los resultados y decisiones.
+Fuente: Parquet de taxis amarillos y verdes de 2024, 2025 y los meses publicados de 2026. trips_raw contiene los registros originales y trips_clean aplica los filtros del informe.
 
-## monthly: ¿Cómo cambia la cantidad de viajes por mes?
+## Cantidad de archivos y registros
 
-Se usa el volumen mensual para observar la demanda.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
-
-```sql
-SELECT taxi, source_year, source_month, count(*) AS trips,
-    avg(total_amount) AS mean_total, median(total_amount) AS median_total,
-    avg(trip_distance) AS mean_distance, avg(duration_minutes) AS mean_duration,
-    sum(total_amount) AS revenue
-FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
-```
-
-## coverage: ¿Qué tipo de taxi registra más viajes?
-
-Se compara el tamaño de ambos servicios con el mismo periodo.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/coverage.csv.
+Fuente: trips_raw. Resultado: 64 archivos y 121,184,384 registros. Criterio: Cobertura por tipo y año.
 
 ```sql
 SELECT taxi, source_year, count(DISTINCT source_file) AS files,
@@ -28,116 +12,9 @@ SELECT taxi, source_year, count(DISTINCT source_file) AS files,
 FROM trips_raw GROUP BY ALL ORDER BY taxi, source_year
 ```
 
-## hourly: ¿En qué horas se concentra la actividad?
+## Datos inconsistentes
 
-Se agrupa por hora de inicio para identificar horarios de mayor actividad.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/hourly.csv.
-
-```sql
-SELECT taxi, hour(pickup) AS hour, count(*) AS trips
-FROM trips_clean GROUP BY ALL ORDER BY taxi, hour
-```
-
-## monthly: ¿Cuánto se paga por viaje?
-
-Se usa el promedio y la mediana del pago total en USD.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
-
-```sql
-SELECT taxi, source_year, source_month, count(*) AS trips,
-    avg(total_amount) AS mean_total, median(total_amount) AS median_total,
-    avg(trip_distance) AS mean_distance, avg(duration_minutes) AS mean_duration,
-    sum(total_amount) AS revenue
-FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
-```
-
-## monthly: ¿Qué distancias se recorren?
-
-Se compara la distancia en millas entre tipos de taxi.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
-
-```sql
-SELECT taxi, source_year, source_month, count(*) AS trips,
-    avg(total_amount) AS mean_total, median(total_amount) AS median_total,
-    avg(trip_distance) AS mean_distance, avg(duration_minutes) AS mean_duration,
-    sum(total_amount) AS revenue
-FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
-```
-
-## monthly: ¿Cuánto dura un viaje?
-
-Se calcula la diferencia entre las horas de inicio y fin en minutos.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/monthly.csv.
-
-```sql
-SELECT taxi, source_year, source_month, count(*) AS trips,
-    avg(total_amount) AS mean_total, median(total_amount) AS median_total,
-    avg(trip_distance) AS mean_distance, avg(duration_minutes) AS mean_duration,
-    sum(total_amount) AS revenue
-FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
-```
-
-## payments: ¿Qué formas de pago se usan?
-
-Se cuentan los viajes por código de pago.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/payments.csv.
-
-```sql
-SELECT taxi, source_year, payment_type, count(*) AS trips,
-    avg(total_amount) AS mean_total,
-    avg(CASE WHEN payment_type = 1 AND fare_amount > 0 THEN 100.0 * tip_amount / fare_amount END) AS card_tip_percent
-FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, payment_type
-```
-
-## payments: ¿Qué porcentaje de la tarifa representa la propina registrada con tarjeta?
-
-Se limita a tarjeta porque las propinas en efectivo no quedan registradas.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/payments.csv.
-
-```sql
-SELECT taxi, source_year, payment_type, count(*) AS trips,
-    avg(total_amount) AS mean_total,
-    avg(CASE WHEN payment_type = 1 AND fare_amount > 0 THEN 100.0 * tip_amount / fare_amount END) AS card_tip_percent
-FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, payment_type
-```
-
-## zones: ¿Cuáles son las zonas de inicio más frecuentes?
-
-Se seleccionan las diez zonas con más viajes por tipo de taxi.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/zones.csv.
-
-```sql
-SELECT taxi, pickup_zone, count(*) AS trips
-FROM trips_clean GROUP BY taxi, pickup_zone QUALIFY row_number() OVER (PARTITION BY taxi ORDER BY count(*) DESC, pickup_zone) <= 10
-ORDER BY taxi, trips DESC
-```
-
-## distribution: ¿Qué valores extremos aparecen en las distancias y pagos?
-
-Se usan percentiles para observar la distribución y reducir la dependencia del promedio.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/distribution.csv.
-
-```sql
-SELECT taxi, source_year,
-    quantile_cont(trip_distance, [0.25, 0.5, 0.75, 0.95, 0.99]) AS distance_quantiles,
-    quantile_cont(total_amount, [0.25, 0.5, 0.75, 0.95, 0.99]) AS total_quantiles,
-    quantile_cont(duration_minutes, [0.25, 0.5, 0.75, 0.95, 0.99]) AS duration_quantiles
-FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year
-```
-
-## quality: ¿Cuántos registros presentan problemas de calidad?
-
-Se cuentan problemas por separado antes de filtrar los datos.
-
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/quality.csv.
+Fuente: trips_raw. Resultado: 1,290 fechas fuera del mes y 23,542,797 pasajeros faltantes. Criterio: Filtros de fecha, distancia, duración y pago.
 
 ```sql
 SELECT taxi, source_year, count(*) AS rows,
@@ -152,11 +29,63 @@ SELECT taxi, source_year, count(*) AS rows,
 FROM trips_raw GROUP BY ALL ORDER BY taxi, source_year
 ```
 
-## comparable: ¿Cómo cambian los viajes entre 2024, 2025 y 2026?
+## Cambios mensuales
 
-Se comparan únicamente los meses presentes en los tres años.
+Fuente: trips_clean. Resultado: Máximos en mayo de 2025 para amarillos y mayo de 2024 para verdes. Criterio: Serie mensual para comparar volumen y promedios.
 
-Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/comparable.csv.
+```sql
+SELECT taxi, source_year, source_month, count(*) AS trips,
+    avg(total_amount) AS mean_total, median(total_amount) AS median_total,
+    avg(trip_distance) AS mean_distance, avg(duration_minutes) AS mean_duration,
+    sum(total_amount) AS revenue
+FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, source_month
+```
+
+## Actividad por hora
+
+Fuente: trips_clean. Resultado: Máximos a las 18:00 en amarillos y 17:00 en verdes. Criterio: Indicador de horarios.
+
+```sql
+SELECT taxi, hour(pickup) AS hour, count(*) AS trips
+FROM trips_clean GROUP BY ALL ORDER BY taxi, hour
+```
+
+## Formas de pago y propinas
+
+Fuente: trips_clean. Resultado: La tarjeta es el pago más frecuente en ambos tipos. Criterio: Propinas respecto a tarifas positivas con tarjeta.
+
+```sql
+SELECT taxi, source_year, payment_type, count(*) AS trips,
+    avg(total_amount) AS mean_total,
+    avg(CASE WHEN payment_type = 1 AND fare_amount > 0 THEN 100.0 * tip_amount / fare_amount END) AS card_tip_percent
+FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year, payment_type
+```
+
+## Distribución de distancia, pago y duración
+
+Fuente: trips_clean. Resultado: En amarillos de 2026, distancia mediana de 1.93 millas y percentil 95 de 12.56. Criterio: Mediana y percentiles para describir valores habituales y altos.
+
+```sql
+SELECT taxi, source_year,
+    quantile_cont(trip_distance, [0.25, 0.5, 0.75, 0.95, 0.99]) AS distance_quantiles,
+    quantile_cont(total_amount, [0.25, 0.5, 0.75, 0.95, 0.99]) AS total_quantiles,
+    quantile_cont(duration_minutes, [0.25, 0.5, 0.75, 0.95, 0.99]) AS duration_quantiles
+FROM trips_clean GROUP BY ALL ORDER BY taxi, source_year
+```
+
+## Zonas con más salidas
+
+Fuente: trips_clean. Resultado: Zona 237 para amarillos y 74 para verdes. Criterio: Diez zonas principales por tipo.
+
+```sql
+SELECT taxi, pickup_zone, count(*) AS trips
+FROM trips_clean GROUP BY taxi, pickup_zone QUALIFY row_number() OVER (PARTITION BY taxi ORDER BY count(*) DESC, pickup_zone) <= 10
+ORDER BY taxi, trips DESC
+```
+
+## Evolución entre años
+
+Fuente: trips_clean. Resultado: De 2024 a 2026, viajes amarillos +10.41% y verdes -22.64%. Criterio: Comparación de los mismos meses.
 
 ```sql
 WITH monthly AS (
@@ -176,14 +105,54 @@ FROM monthly WHERE source_month IN (SELECT source_month FROM common_months)
 GROUP BY ALL ORDER BY taxi, source_year
 ```
 
-## Columnas, tipos y muestra
+## Columnas y tipos
 
-schema.csv proviene de DESCRIBE SELECT * FROM read_parquet(lista_archivos, union_by_name=true). sample.csv proviene de SELECT * FROM trips_raw ORDER BY source_file, pickup LIMIT 10. Se obtienen los tipos originales y diez registros ordenados. La muestra no es aleatoria ni representativa.
+Fuente: Parquet originales. Resultado: 25 columnas. Las fechas de amarillos y verdes tienen nombres distintos y el recargo de congestión no aparece en 2024. La unión por nombre conserva esas diferencias.
+
+```sql
+DESCRIBE SELECT * FROM read_parquet({files}, union_by_name = true)
+```
+
+| Columna | Tipo |
+| --- | --- |
+| VendorID | INTEGER |
+| lpep_pickup_datetime | TIMESTAMP |
+| lpep_dropoff_datetime | TIMESTAMP |
+| store_and_fwd_flag | VARCHAR |
+| RatecodeID | BIGINT |
+| PULocationID | INTEGER |
+| DOLocationID | INTEGER |
+| passenger_count | BIGINT |
+| trip_distance | DOUBLE |
+| fare_amount | DOUBLE |
+| extra | DOUBLE |
+| mta_tax | DOUBLE |
+| tip_amount | DOUBLE |
+| tolls_amount | DOUBLE |
+| ehail_fee | DOUBLE |
+| improvement_surcharge | DOUBLE |
+| total_amount | DOUBLE |
+| payment_type | BIGINT |
+| trip_type | BIGINT |
+| congestion_surcharge | DOUBLE |
+| cbd_congestion_fee | DOUBLE |
+| request_source | VARCHAR |
+| tpep_pickup_datetime | TIMESTAMP |
+| tpep_dropoff_datetime | TIMESTAMP |
+| Airport_fee | DOUBLE |
+
+## Muestra
+
+Fuente: registros originales. Resultado: diez viajes, incluyendo fechas fuera del periodo. El filtro de fecha excluye esos valores de los indicadores.
+
+```sql
+SELECT * FROM trips_raw ORDER BY source_file, pickup LIMIT 10
+```
 
 ## Transformaciones
 
-sql/normalize.sql contiene la lectura, extracción del tipo y periodo de origen, unificación de fechas y cálculo de duración. scripts/common.py registra el filtro de trips_clean. No se modifican los archivos originales.
+Fechas de inicio y fin comunes para ambos tipos. Año y mes tomados del nombre del archivo. Duración calculada en minutos. Los filtros están en el informe.
 
-## Benchmark
+## Benchmark e indicadores
 
-Se reutilizan monthly.sql, hourly.sql y payments.sql. Solo cambia la fuente de trips_clean entre trips_raw y trips_materialized. Los filtros y agregaciones se mantienen. benchmark_runs.csv contiene todas las repeticiones. benchmark_summary.csv contiene mediana, mínimo y máximo. materialization.csv contiene el costo de crear cada tabla.
+El benchmark compara las consultas mensuales, de horarios y de pagos sobre Parquet y una tabla DuckDB. Los seis indicadores del tablero corresponden a las consultas numeradas de la carpeta sql.

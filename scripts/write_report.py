@@ -1,105 +1,97 @@
-import json
-
 import pandas as pd
 
-from common import RESULTS, ROOT
-
+from common import RESULTS, ROOT, sql
 
 QUESTIONS = [
-    ("¿Cómo cambia la cantidad de viajes por mes?", "monthly", "trips", "Se usa el volumen mensual para observar la demanda."),
-    ("¿Qué tipo de taxi registra más viajes?", "coverage", "rows", "Se compara el tamaño de ambos servicios con el mismo periodo."),
-    ("¿En qué horas se concentra la actividad?", "hourly", "trips", "Se agrupa por hora de inicio para identificar horarios de mayor actividad."),
-    ("¿Cuánto se paga por viaje?", "monthly", "mean_total", "Se usa el promedio y la mediana del pago total en USD."),
-    ("¿Qué distancias se recorren?", "monthly", "mean_distance", "Se compara la distancia en millas entre tipos de taxi."),
-    ("¿Cuánto dura un viaje?", "monthly", "mean_duration", "Se calcula la diferencia entre las horas de inicio y fin en minutos."),
-    ("¿Qué formas de pago se usan?", "payments", "trips", "Se cuentan los viajes por código de pago."),
-    ("¿Qué porcentaje de la tarifa representa la propina registrada con tarjeta?", "payments", "card_tip_percent", "Se limita a tarjeta porque las propinas en efectivo no quedan registradas."),
-    ("¿Cuáles son las zonas de inicio más frecuentes?", "zones", "trips", "Se seleccionan las diez zonas con más viajes por tipo de taxi."),
-    ("¿Qué valores extremos aparecen en las distancias y pagos?", "distribution", "distance_quantiles", "Se usan percentiles para observar la distribución y reducir la dependencia del promedio."),
-    ("¿Cuántos registros presentan problemas de calidad?", "quality", "invalid_distance", "Se cuentan problemas por separado antes de filtrar los datos."),
-    ("¿Cómo cambian los viajes entre 2024, 2025 y 2026?", "comparable", "trips", "Se comparan únicamente los meses presentes en los tres años."),
+    ('¿Cómo cambia la cantidad de viajes por mes?', 'Viajes mensuales', 'Cambios en la actividad.'),
+    ('¿Qué tipo de taxi registra más viajes?', 'Cantidad por tipo', 'Diferencia de volumen.'),
+    ('¿Cuál es la hora con más viajes?', 'Viajes por hora', 'Horarios de mayor actividad.'),
+    ('¿Cuánto cuesta un viaje?', 'Pago promedio', 'Costo para el pasajero.'),
+    ('¿Qué distancias recorren los taxis?', 'Distancia promedio', 'Tamaño de los recorridos.'),
+    ('¿Cuánto dura un viaje?', 'Duración promedio', 'Tiempo de traslado.'),
+    ('¿Qué forma de pago es más frecuente?', 'Viajes por forma de pago', 'Uso de formas de pago.'),
+    ('¿Cuánto representa la propina con tarjeta?', 'Porcentaje de propina', 'Relación entre propina y tarifa.'),
+    ('¿Qué zonas tienen más salidas?', 'Viajes por zona', 'Concentración de viajes.'),
+    ('¿Qué tan altos son los pagos y distancias?', 'Mediana y percentil 95', 'Diferencia entre valores habituales y altos.'),
+    ('¿Cuántos registros tienen datos inconsistentes?', 'Cantidad por problema', 'Calidad de los datos.'),
+    ('¿Cómo cambian los indicadores entre años?', 'Comparación de los mismos meses', 'Evolución del servicio.'),
 ]
 
 
 def table(frame):
     values = frame.copy()
-    for column in values.select_dtypes(include="number"):
-        if column in ["source_year", "source_month", "hour", "payment_type", "pickup_zone"]:
-            continue
-        if column in ["rows", "trips", "files"]:
-            values[column] = values[column].map(lambda v: f"{int(v):,}")
-            continue
-        values[column] = values[column].map(lambda v: f"{v:,.3f}" if isinstance(v, float) else f"{v:,}")
-    return "| " + " | ".join(values.columns) + " |\n| " + " | ".join("---" for _ in values.columns) + " |\n" + "\n".join("| " + " | ".join(str(v) for v in row) + " |" for row in values.itertuples(index=False, name=None))
+    for column in values:
+        if pd.api.types.is_numeric_dtype(values[column]):
+            integer = not pd.api.types.is_float_dtype(values[column]) or column in ['Viajes', 'Registros', 'Archivos']
+            values[column] = values[column].map(lambda v: '-' if pd.isna(v) else (str(int(v)) if column == 'Año' else f'{int(v):,}' if integer else f'{v:,.2f}'))
+    return '| ' + ' | '.join(values.columns) + ' |\n| ' + ' | '.join('---' for _ in values.columns) + ' |\n' + '\n'.join('| ' + ' | '.join(str(v) for v in row) + ' |' for row in values.itertuples(index=False, name=None))
 
 
 def main():
-    output = RESULTS / "2024_2025_2026"
-    frames = {p.stem: pd.read_csv(p) for p in output.glob("*.csv")}
-    coverage = frames["coverage"]
-    monthly = frames["monthly"]
-    comparable = frames["comparable"]
-    hourly = frames["hourly"]
-    quality = frames["quality"]
-    benchmarks = pd.read_csv(RESULTS / "benchmark_summary.csv")
-    parts = ["# Informe del laboratorio 8 - DuckDB", "## Ejercicio 1: ambiente", "Se trabajó sobre el fork configurado en origin: https://github.com/Ninaswiftie09/duckdb. El repositorio del docente está configurado como upstream. Se levantaron JupyterLab y Metabase con Docker Compose y se comprobó que ambos respondieran por HTTP. Las versiones del ambiente están fijadas en requirements.txt y en los Dockerfiles.", "Un ambiente reproducible permite repetir el análisis con las mismas herramientas y versiones. Se reduce el riesgo de obtener resultados distintos por cambios en las dependencias. data/raw conserva los archivos originales. data/processed contiene las tablas y archivos derivados. Scripts contiene los procesos ejecutables. sql contiene las consultas. notebooks permite explorar los resultados. docs contiene la documentación y evidencia.", "## Ejercicio 2: descarga inicial", "Se reemplazó el año fijo del script por el argumento --years, cuyo valor inicial es 2026. Se obtiene el inventario desde los enlaces oficiales de la TLC. Se agregó un encabezado User-Agent porque el sitio rechazó inicialmente las solicitudes. Se conservaron las descargas por bloques y archivos temporales, y se agregaron reintentos, validación Parquet, cantidad de registros, tamaño y SHA-256. Los errores HTTP producen un fallo. No se clasifican como meses no publicados. Los meses no publicados se determinan usando el inventario oficial.", "La integridad estructural se verifica con PyArrow. La huella SHA-256 permite detectar cambios posteriores, pero no demuestra por sí sola que la TLC publicó datos completos. La completitud de la descarga significa que cada enlace publicado tiene un archivo local válido. Los manifiestos download_*.json registran la cobertura por etapa. Una segunda ejecución registra existing y conserva las huellas.", "## Ejercicio 3: consulta directa y calidad", "Se consultó read_parquet con union_by_name=true. Las columnas de inicio y fin de yellow y green se unificaron con COALESCE. El año y mes de origen se extraen del nombre del archivo para detectar fechas fuera del periodo. cbd_congestion_fee no aparece en 2024. union_by_name conserva esa diferencia como NULL.", table(coverage), "Los tipos y columnas originales aparecen en results/2024_2025_2026/schema.csv y la muestra en sample.csv. Las consultas originales se ejecutaron sin importar los archivos a una tabla. DuckDB lee las columnas necesarias y puede evitar bloques que no cumplen algunos filtros. Esto permite trabajar con datos grandes sin cargar todos los registros en un DataFrame.", table(quality), "Se conservaron todos los archivos originales. Para los indicadores se usó trips_clean: fecha dentro del año y mes del archivo, distancia mayor que 0 y hasta 100 millas, duración mayor que 0 y hasta 180 minutos y pago total mayor que 0 y hasta 500 USD. Los límites son decisiones de análisis y pueden excluir viajes reales largos o caros. No se presentan como reglas oficiales. No se imputaron pasajeros ni propinas. Los problemas de calidad se cuentan por separado y pueden superponerse, por lo que no deben sumarse para calcular registros excluidos. Un pago de cero o negativo puede corresponder a un viaje sin cargo, una disputa o un reembolso. Se excluye del indicador de viajes pagados, sin afirmar que todos esos registros sean errores. No se eliminaron duplicados porque no existe una identificación única de viaje.", "## Ejercicio 4: preguntas y hallazgos"]
-    for index, (question, query, metric, justification) in enumerate(QUESTIONS, 1):
-        parts.append(f"{index}. {question} {justification} Consulta: sql/{query}.sql. Resultado: results/2024_2025_2026/{query}.csv.")
-    for taxi in ["yellow", "green"]:
-        group = hourly[hourly.taxi == taxi]
-        peak = group.loc[group.trips.idxmax()]
-        parts.append(f"En {taxi}, la hora con más viajes es {int(peak['hour']):02d}:00, con {int(peak.trips):,} viajes. Esto permite identificar la hora de mayor actividad dentro de los registros analizados, sin afirmar una causa.")
-    totals = coverage.groupby("taxi").rows.sum()
-    parts.append(f"Los archivos amarillos contienen {totals['yellow']:,} registros y los verdes {totals['green']:,}. El volumen amarillo es {totals['yellow'] / totals['green']:.2f} veces el verde. Esto describe estos archivos y no toda la movilidad de Nueva York.")
-    for taxi in ["yellow", "green"]:
+    output = RESULTS / '2024_2025_2026'
+    frames = {p.stem: pd.read_csv(p) for p in output.glob('*.csv')}
+    coverage, monthly, quality = [frames[name] for name in ['coverage', 'monthly', 'quality']]
+    names = {'yellow': 'Amarillos', 'green': 'Verdes'}
+    counts = coverage[['taxi', 'source_year', 'files', 'rows']].rename(columns={'taxi': 'Taxi', 'source_year': 'Año', 'files': 'Archivos', 'rows': 'Registros'})
+    counts['Taxi'] = counts.Taxi.map(names)
+    initial = coverage[coverage.source_year == 2026]
+    added = coverage[coverage.source_year == 2024]
+    parts = ['# Lab 8 - DuckDB', '## 1. Ambiente', 'Fork: https://github.com/Ninaswiftie09/duckdb. Repositorio de Erick: https://github.com/menene/duckdb.', 'JupyterLab y Metabase responden correctamente. El ambiente incluye Python, DuckDB, Pandas, PyArrow, Matplotlib y Requests. Las versiones fijas permiten repetir el análisis con las mismas herramientas.', '## 2. Descarga inicial', f'2026 contiene {int(initial.files.sum())} archivos y {int(initial.rows.sum()):,} registros de los meses publicados. Todos los enlaces publicados tienen un Parquet local válido. Los archivos existentes permanecen sin cambios.', 'El descargador acepta varios años, identifica los meses publicados y omite archivos existentes. Cada descarga incluye tamaño, cantidad de registros y una huella SHA-256.', '## 3. Exploración y calidad', f'El conjunto completo contiene {int(coverage.files.sum())} archivos y {int(coverage.rows.sum()):,} registros.', table(counts), 'Las 25 columnas incluyen fechas de inicio y fin, pasajeros, distancia, zonas, forma de pago, tarifa, propina y recargos. Las fechas son TIMESTAMP, los importes y distancias son DOUBLE, los códigos son INTEGER o BIGINT y las cadenas son VARCHAR.', 'La muestra contiene fechas fuera del periodo del archivo. También hay distancias y duraciones no positivas, pagos no positivos y pasajeros faltantes.', 'Los indicadores incluyen fechas dentro del mes de origen, distancias mayores que 0 y hasta 100 millas, duración mayor que 0 y hasta 180 minutos y pagos mayores que 0 y hasta 500 USD. Los pasajeros faltantes permanecen sin imputación.', 'Consultar Parquet directamente permite filtrar y agrupar datos sin importarlos primero a una tabla ni cargar todo el conjunto en memoria.', '## 4. Preguntas y hallazgos', table(pd.DataFrame(QUESTIONS, columns=['Pregunta', 'Indicador', 'Motivo']))]
+    highlights = []
+    for taxi, label in names.items():
+        hours = frames['hourly'][frames['hourly'].taxi == taxi]
+        peak_hour = hours.loc[hours.trips.idxmax()]
+        months = monthly[monthly.taxi == taxi]
+        peak_month = months.loc[months.trips.idxmax()]
+        zone = frames['zones'][frames['zones'].taxi == taxi].iloc[0]
+        highlights.append(f'{label}: mayor actividad a las {int(peak_hour["hour"]):02d}:00, con {int(peak_hour.trips):,} viajes. El mes con más viajes es {int(peak_month.source_year)}-{int(peak_month.source_month):02d}, con {int(peak_month.trips):,}. La zona de salida más frecuente es {int(zone.pickup_zone)}, con {int(zone.trips):,} viajes.')
+    totals = coverage.groupby('taxi').rows.sum()
+    parts.extend(highlights + [f'Los taxis amarillos acumulan {totals.yellow / totals.green:.2f} veces más registros que los verdes.', f'Las fechas fuera del mes del archivo suman {int(quality.wrong_period.sum()):,} registros. Los datos de pasajeros faltantes suman {int(quality.missing_passengers.sum()):,}.', '## 5. Incorporación de 2024', f'2024 aporta {int(added.files.sum())} archivos y {int(added.rows.sum()):,} registros. La cobertura conjunta de 2024 y 2026 es de {int(coverage[coverage.source_year.isin([2024, 2026])].files.sum())} archivos. Las huellas de los 16 archivos anteriores coinciden y las consultas funcionan con ambos años.', 'Los años como parámetros y la unión de columnas por nombre permiten agregar datos sin cambiar las consultas.', '## 6. Benchmark', 'Datos de 2024 y 2026. Tres repeticiones por consulta, después de un calentamiento, con cuatro hilos y 2 GB de memoria. Los tiempos corresponden a las medianas en segundos y los resultados coinciden entre ambas fuentes.'])
+    benchmark = pd.read_csv(RESULTS / 'benchmark_summary.csv')
+    pivot = benchmark.pivot(index=['files', 'query'], columns='mode', values='median').reset_index()
+    pivot['query'] = pivot['query'].map({'monthly': 'Mensual', 'hourly': 'Horarios', 'payments': 'Pagos'})
+    parts.append(table(pivot[['files', 'query', 'parquet', 'duckdb']].rename(columns={'files': 'Archivos', 'query': 'Consulta', 'parquet': 'Parquet (s)', 'duckdb': 'DuckDB (s)'})))
+    builds = pd.read_csv(RESULTS / 'materialization.csv')
+    parts.extend(['Tiempo de creación de las tablas:', table(builds[['files', 'materialization_seconds']].rename(columns={'files': 'Archivos', 'materialization_seconds': 'Segundos'})), 'La tabla responde más rápido en las nueve comparaciones. Los tiempos aumentan con el volumen. Parquet permite consultas ocasionales sin una carga previa. La tabla resulta útil para consultas repetidas, aunque requiere tiempo de creación y espacio adicional.', '## 7. Indicadores y tablero', 'El tablero contiene viajes mensuales, pago promedio, distancia promedio, duración promedio, viajes por hora y formas de pago. Estos indicadores resumen actividad, costo y características de los recorridos.'])
+    indicator_rows = []
+    for taxi, label in names.items():
         group = monthly[monthly.taxi == taxi]
-        peak = group.loc[group.trips.idxmax()]
-        parts.append(f"En {taxi}, el mes con más viajes filtrados fue {int(peak.source_year)}-{int(peak.source_month):02d}, con {int(peak.trips):,} viajes. Se mantiene la serie mensual para observar si el máximo es parte de un patrón repetido.")
-        q = quality[quality.taxi == taxi]
-        parts.append(f"En {taxi}, se encontraron {int(q.wrong_period.sum()):,} fechas fuera del periodo del archivo y {int(q.missing_passengers.sum()):,} valores de pasajeros faltantes. Se filtran las fechas inconsistentes y se conserva el dato de pasajeros sin imputación.")
-        zone = frames["zones"][frames["zones"].taxi == taxi].iloc[0]
-        parts.append(f"La zona de inicio más frecuente en {taxi} tiene ID {int(zone.pickup_zone)}, con {int(zone.trips):,} viajes filtrados. Se mantiene el ID oficial. No se asigna un nombre de barrio sin una tabla de referencia.")
-        for _, row in frames["distribution"][frames["distribution"].taxi == taxi].iterrows():
-            distances = [float(v) for v in str(row.distance_quantiles).strip('[]').replace(',', ' ').split()]
-            payments = [float(v) for v in str(row.total_quantiles).strip('[]').replace(',', ' ').split()]
-            parts.append(f"En {taxi} {int(row.source_year)}, la mediana de distancia fue {distances[1]:.2f} millas y el percentil 95 fue {distances[3]:.2f}. La mediana del pago fue {payments[1]:.2f} USD y el percentil 95 fue {payments[3]:.2f} USD. La separación entre mediana y percentil 95 muestra que los valores altos no describen el viaje habitual.")
-    parts.extend(["## Ejercicio 5: incorporación de 2024", "Se ejecutó --years 2024 2026 después de la descarga inicial y se confirmó la cobertura conjunta con coverage.sql. Los 24 archivos de 2024 se incorporaron sin eliminar los de 2026. Se ejecutaron las mismas consultas sobre el conjunto ampliado. Sus resultados están en results/2024_2026. La selección de archivos y union_by_name permiten agregar años sin reescribir las consultas. comparable.sql produce una tabla vacía hasta que estén presentes los tres años. Esa consulta fue diseñada para la comparación final.", "## Ejercicio 6: benchmark", "Se usaron los datos de 2024 y 2026. Se evaluaron 2, 12 y todos los archivos de esos años. Los prefijos se ordenan por año, mes y tipo para incluir ambos tipos de taxi. No son muestras aleatorias. Para cada tamaño se creó una tabla con todas las columnas normalizadas. Se midieron monthly.sql, hourly.sql y payments.sql con los mismos filtros y se comprobó que sus resultados coincidieran dentro de una tolerancia numérica.", "Se ejecutó una consulta de calentamiento por modo y luego tres repeticiones, alternando el orden. Se midió ejecución y recuperación de resultados. Se excluyó la creación de vistas de cada medición. Se fijaron cuatro hilos y un límite de memoria de 2 GB. La caché del sistema operativo no se vació. Los resultados representan consultas repetidas con caché caliente, no lecturas en frío. El tiempo de materialización se registró por separado.", table(benchmarks)])
-    pivot = benchmarks.pivot(index=["files", "query"], columns="mode", values="median")
-    for (size, query), row in pivot.iterrows():
-        parts.append(f"Con {size} archivos, {query} tardó {row['parquet']:.4f} s en Parquet y {row['duckdb']:.4f} s en la tabla. La relación Parquet/tabla fue {row['parquet']/row['duckdb']:.2f}.")
-    materialization = pd.read_csv(RESULTS / "materialization.csv")
-    largest = int(materialization.files.max())
-    largest_times = pivot.loc[largest]
-    savings = (largest_times.parquet - largest_times.duckdb).sum()
-    if savings > 0:
-        rounds = materialization.loc[materialization.files == largest, "materialization_seconds"].iloc[0] / savings
-        parts.append(f"Con {largest} archivos, el costo de materialización se compensaría después de aproximadamente {rounds:.1f} rondas de las tres consultas, si se mantienen estas medianas. Esta estimación no incluye actualizaciones ni operaciones adicionales.")
-    parts.append("Los tiempos sobre Parquet incluyen la unificación de fechas y el cálculo de duración. La tabla conserva esos campos precalculados. Se separó el costo de crear la tabla para evaluar ese trabajo inicial.")
-    parts.extend(["El costo de crear las tablas se registró por separado:", table(pd.read_csv(RESULTS / "materialization.csv")), "Se repitió el benchmark de forma aislada después de observar presión de memoria con otros procesos. El informe usa únicamente esa repetición completa. Aun así, se observa variación entre mínimos y máximos, por lo que la mediana describe mejor estas mediciones que un solo tiempo.", "Los tiempos cambian con el volumen, la compresión, el tipo de consulta y la caché. No se asume que una estrategia sea siempre mejor. Parquet permite explorar archivos nuevos sin una carga previa ni una segunda copia de los datos. Una tabla puede servir para consultas repetidas y para Metabase, pero requiere tiempo de creación, espacio adicional y actualización al incorporar datos nuevos.", "## Ejercicio 7: indicadores y tablero", "Se definieron doce preguntas y seis indicadores: cantidad mensual de viajes, pago promedio, distancia promedio, duración promedio, viajes por hora y formas de pago. Cada tarjeta usa una consulta en sql/indicator_*.sql. El tablero se creó en Metabase y su verificación está en dashboard/metabase_validation.json. dashboard/dashboard.png permite revisar los seis indicadores sin abrir el servicio. Los indicadores se calculan con datos filtrados. Las cifras de coverage corresponden a datos originales."])
-    for taxi in ["yellow", "green"]:
-        group = monthly[monthly.taxi == taxi]
-        weights = group.trips
-        parts.append(f"Para {taxi}, se analizaron {int(weights.sum()):,} viajes después de los filtros. El pago promedio ponderado fue {(group.mean_total * weights).sum()/weights.sum():.2f} USD, la distancia promedio {(group.mean_distance * weights).sum()/weights.sum():.2f} millas y la duración promedio {(group.mean_duration * weights).sum()/weights.sum():.2f} minutos. La ponderación usa la cantidad de viajes de cada mes.")
-        payments = frames["payments"]
-        counts = payments[payments.taxi == taxi].groupby("payment_type").trips.sum()
-        parts.append(f"En {taxi}, el código de pago más frecuente es {int(counts.idxmax())}, con {int(counts.max()):,} viajes ({100*counts.max()/weights.sum():.2f}% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año. El código 1 identifica tarjeta.")
-        cards = payments[(payments.taxi == taxi) & (payments.payment_type == 1)]
-        for _, card in cards.iterrows():
-            parts.append(f"En {taxi} {int(card.source_year)}, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue {card.card_tip_percent:.2f}%. Se consideran únicamente tarifas positivas. No se extiende a propinas en efectivo.")
-    parts.extend(["## Ejercicio 8: tres años y comparación temporal", "Se incorporaron los 24 archivos de 2025 después de validar 2024 y 2026. Se ejecutaron nuevamente las consultas y se actualizó el tablero. Para la comparación entre años se seleccionaron únicamente los meses presentes en 2024, 2025 y 2026. El año 2026 está incompleto y no se compara su total parcial contra doce meses de otro año.", table(comparable)])
-    for taxi in ["yellow", "green"]:
-        group = comparable[comparable.taxi == taxi].set_index("source_year")
-        for metric, label in [("trips", "cantidad de viajes"), ("mean_total", "pago promedio"), ("mean_distance", "distancia promedio")]:
-            a, b, c = [group.loc[year, metric] for year in [2024, 2025, 2026]]
-            parts.append(f"En {taxi}, la {label} fue {a:,.2f} en 2024, {b:,.2f} en 2025 y {c:,.2f} en 2026 para los mismos meses. El cambio de 2024 a 2026 fue {100*(c/a-1):.2f}%. Se describe un patrón observado, sin atribuirlo a una causa específica.")
-    parts.extend(["El recargo cbd_congestion_fee se incorporó desde 2025 según la TLC. Su ausencia en 2024 se conserva como NULL y no se interpreta como una medición de cero. Los cambios en pago pueden incluir cambios en recargos, composición de viajes y otras variables, por lo que no se atribuyen automáticamente a una tarifa más alta.", "## Ejercicio 9: discusión", "### 9.1 Características útiles", "Se usaron SQL, lectura directa de Parquet, unión de esquemas por nombre y procesamiento de agregaciones con memoria limitada. Se pudieron consultar varios años sin crear primero una tabla.", "### 9.2 Parquet", "Se evita una importación previa y se conservan los archivos originales. Como limitación, hay que controlar diferencias de esquema, cantidad de archivos y calidad. Las consultas repetidas pueden volver a leer y descomprimir información.", "### 9.3 Tablas materializadas", "Se dispone de una fuente estable para Metabase y consultas repetidas. Se requiere espacio extra, tiempo de materialización y una estrategia para actualizar la tabla. Los tiempos medidos permiten evaluar si el costo inicial se compensa.", "### 9.4 Comparación con Pandas", "DuckDB puede filtrar y agregar antes de llevar resultados pequeños a Pandas. Se evita concatenar todos los viajes en memoria. Pandas se usó para tablas de resultados y gráficos, donde el volumen ya es reducido.", "### 9.5 Nuevos datos", "Los años son parámetros, los archivos mantienen un nombre predecible y las consultas usan vistas normalizadas. Los archivos existentes se omiten y los manifiestos registran la cobertura.", "### 9.6 Automatización en producción", "Se debería programar la revisión de nuevas publicaciones, validar esquemas e integridad, controlar fallos de descarga, actualizar tablas y tablero y alertar cuando cambie la cobertura o la calidad.", "### 9.7 Reproducibilidad", "Se fijaron versiones, se versionaron scripts y SQL, se conservaron los originales y se registraron filtros, fuentes y metodología de medición. Los datos grandes y las credenciales se excluyeron de Git.", "### 9.8 Aprendizajes", "Con varios años se hacen visibles los costos de memoria, lectura y copias adicionales. También se observa que los archivos pueden tener cambios de columnas y fechas fuera de su periodo. Comparar años requiere controlar la cobertura temporal.", "## Fuentes", "TLC: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page", "DuckDB: https://duckdb.org/docs/stable/data/parquet/overview", "Metabase: https://www.metabase.com/docs/latest/api", "Los resultados corresponden a los archivos publicados y descargados durante esta ejecución. Los tiempos dependen de la máquina y no son garantías de desempeño."])
-    (ROOT / "docs" / "informe.md").write_text("\n\n".join(parts) + "\n", encoding="utf-8")
-    query_parts = ["# Documentación de consultas", "Las consultas se ejecutan sobre todos los archivos yellow y green de los años seleccionados. Cada salida se guarda en docs/results/<años>/<consulta>.csv. Los resultados por etapa permiten revisar 2026, 2024 con 2026 y los tres años. El informe explica los resultados y decisiones."]
-    for question, query, metric, justification in QUESTIONS:
-        query_parts.extend([f"## {query}: {question}", justification, f"Fuente: trips_raw para coverage y quality. trips_clean para las demás. Resultado: docs/results/2024_2025_2026/{query}.csv.", "```sql\n" + (ROOT / "sql" / f"{query}.sql").read_text() + "```"])
-    query_parts.extend(["## Columnas, tipos y muestra", "schema.csv proviene de DESCRIBE SELECT * FROM read_parquet(lista_archivos, union_by_name=true). sample.csv proviene de SELECT * FROM trips_raw ORDER BY source_file, pickup LIMIT 10. Se obtienen los tipos originales y diez registros ordenados. La muestra no es aleatoria ni representativa.", "## Transformaciones", "sql/normalize.sql contiene la lectura, extracción del tipo y periodo de origen, unificación de fechas y cálculo de duración. scripts/common.py registra el filtro de trips_clean. No se modifican los archivos originales.", "## Benchmark", "Se reutilizan monthly.sql, hourly.sql y payments.sql. Solo cambia la fuente de trips_clean entre trips_raw y trips_materialized. Los filtros y agregaciones se mantienen. benchmark_runs.csv contiene todas las repeticiones. benchmark_summary.csv contiene mediana, mínimo y máximo. materialization.csv contiene el costo de crear cada tabla."])
-    (ROOT / "docs" / "consultas.md").write_text("\n\n".join(query_parts) + "\n", encoding="utf-8")
+        total = group.trips.sum()
+        payments = frames['payments'][frames['payments'].taxi == taxi]
+        card_count = payments[payments.payment_type == 1].trips.sum()
+        indicator_rows.append([label, int(total), (group.mean_total * group.trips).sum() / total, (group.mean_distance * group.trips).sum() / total, (group.mean_duration * group.trips).sum() / total, 100 * card_count / total])
+    parts.extend([table(pd.DataFrame(indicator_rows, columns=['Taxi', 'Viajes', 'Pago (USD)', 'Distancia (millas)', 'Duración (min)', 'Tarjeta (%)'])), 'Los amarillos tienen mayor volumen, pago y duración promedio. La tarjeta es la forma de pago más frecuente en ambos tipos. Las horas de mayor actividad son las 18:00 para amarillos y las 17:00 para verdes.', '![Tablero](dashboard/metabase.png)', '## 8. Comparación entre años', f'2025 aporta {int(coverage[coverage.source_year == 2025].files.sum())} archivos. La comparación corresponde a los meses presentes en los tres años.'])
+    tips = frames['payments'][frames['payments'].payment_type == 1].pivot(index='source_year', columns='taxi', values='card_tip_percent').reset_index()
+    tips = tips.rename(columns={'source_year': 'Año', 'yellow': 'Amarillos (%)', 'green': 'Verdes (%)'})
+    insertion = parts.index('![Tablero](dashboard/metabase.png)')
+    parts[insertion:insertion] = ['Propina con tarjeta como porcentaje de la tarifa:', table(tips[['Año', 'Amarillos (%)', 'Verdes (%)']])]
+    comparable = frames['comparable']
+    temporal = comparable[['taxi', 'source_year', 'trips', 'mean_total', 'mean_distance', 'mean_duration']].rename(columns={'taxi': 'Taxi', 'source_year': 'Año', 'trips': 'Viajes', 'mean_total': 'Pago (USD)', 'mean_distance': 'Distancia (millas)', 'mean_duration': 'Duración (min)'})
+    temporal['Taxi'] = temporal.Taxi.map(names)
+    parts.append(table(temporal))
+    for taxi, label in names.items():
+        values = comparable[comparable.taxi == taxi].set_index('source_year')
+        changes = [100 * (values.loc[2026, metric] / values.loc[2024, metric] - 1) for metric in ['trips', 'mean_total', 'mean_distance']]
+        parts.append(f'{label}, de 2024 a 2026: viajes {changes[0]:+.2f}%, pago promedio {changes[1]:+.2f}% y distancia promedio {changes[2]:+.2f}%.')
+    parts.extend(['Los viajes verdes disminuyen en los tres años. Los amarillos alcanzan su mayor volumen en 2025. El pago y la distancia promedio de 2026 superan los de 2024 en ambos tipos. El recargo de congestión aparece desde 2025.', '## 9. Discusión', '### 9.1 Características útiles', 'Lectura directa de Parquet, SQL y unión de columnas por nombre permiten analizar varios años sin una importación previa.', '### 9.2 Parquet', 'Permite trabajar con los archivos originales sin otra copia. Las diferencias de columnas requieren una unión por nombre y las consultas repetidas vuelven a leer los datos.', '### 9.3 Tablas DuckDB', 'Las consultas repetidas tienen menores tiempos. La tabla requiere espacio adicional, tiempo de creación y actualización al agregar datos.', '### 9.4 Comparación con Pandas', 'DuckDB filtra y agrupa antes de pasar resultados a Pandas. Esto reduce la cantidad de datos en memoria.', '### 9.5 Incorporación de datos', 'Los años como parámetros, los nombres mensuales y las vistas comunes permiten incorporar archivos nuevos con pocos cambios.', '### 9.6 Automatización en producción', 'Descarga mensual, validación de datos y actualización de la base y el tablero.', '### 9.7 Reproducibilidad', 'Versiones fijas, código y SQL versionados, filtros documentados y datos originales separados de Git.', '### 9.8 Aprendizaje', 'El volumen hace visibles los costos de lectura, memoria y almacenamiento. Las diferencias de columnas y fechas requieren atención al combinar años.', '## Fuente', '[NYC TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)'])
+    (ROOT / 'docs/informe.md').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+    summaries = {
+        'coverage': ('Cantidad de archivos y registros', f'{int(coverage.files.sum())} archivos y {int(coverage.rows.sum()):,} registros.', 'Cobertura por tipo y año.'),
+        'quality': ('Datos inconsistentes', f'{int(quality.wrong_period.sum()):,} fechas fuera del mes y {int(quality.missing_passengers.sum()):,} pasajeros faltantes.', 'Filtros de fecha, distancia, duración y pago.'),
+        'monthly': ('Cambios mensuales', 'Máximos en mayo de 2025 para amarillos y mayo de 2024 para verdes.', 'Serie mensual para comparar volumen y promedios.'),
+        'hourly': ('Actividad por hora', 'Máximos a las 18:00 en amarillos y 17:00 en verdes.', 'Indicador de horarios.'),
+        'payments': ('Formas de pago y propinas', 'La tarjeta es el pago más frecuente en ambos tipos.', 'Propinas respecto a tarifas positivas con tarjeta.'),
+        'distribution': ('Distribución de distancia, pago y duración', 'En amarillos de 2026, distancia mediana de 1.93 millas y percentil 95 de 12.56.', 'Mediana y percentiles para describir valores habituales y altos.'),
+        'zones': ('Zonas con más salidas', 'Zona 237 para amarillos y 74 para verdes.', 'Diez zonas principales por tipo.'),
+        'comparable': ('Evolución entre años', 'De 2024 a 2026, viajes amarillos +10.41% y verdes -22.64%.', 'Comparación de los mismos meses.'),
+    }
+    queries = ['# Consultas', 'Fuente: Parquet de taxis amarillos y verdes de 2024, 2025 y los meses publicados de 2026. trips_raw contiene los registros originales y trips_clean aplica los filtros del informe.']
+    for name, (purpose, result, decision) in summaries.items():
+        source = 'trips_raw' if name in ['coverage', 'quality'] else 'trips_clean'
+        queries.extend([f'## {purpose}', f'Fuente: {source}. Resultado: {result} Criterio: {decision}', '```sql\n' + sql(name).strip() + '\n```'])
+    queries.extend(['## Columnas y tipos', 'Fuente: Parquet originales. Resultado: 25 columnas. Las fechas de amarillos y verdes tienen nombres distintos y el recargo de congestión no aparece en 2024. La unión por nombre conserva esas diferencias.', '```sql\n' + sql('schema').strip() + '\n```', table(frames['schema'][['column_name', 'column_type']].rename(columns={'column_name': 'Columna', 'column_type': 'Tipo'})), '## Muestra', 'Fuente: registros originales. Resultado: diez viajes, incluyendo fechas fuera del periodo. El filtro de fecha excluye esos valores de los indicadores.', '```sql\n' + sql('sample').strip() + '\n```', '## Transformaciones', 'Fechas de inicio y fin comunes para ambos tipos. Año y mes tomados del nombre del archivo. Duración calculada en minutos. Los filtros están en el informe.', '## Benchmark e indicadores', 'El benchmark compara las consultas mensuales, de horarios y de pagos sobre Parquet y una tabla DuckDB. Los seis indicadores del tablero corresponden a las consultas numeradas de la carpeta sql.'])
+    (ROOT / 'docs/consultas.md').write_text('\n\n'.join(queries) + '\n', encoding='utf-8')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
