@@ -1,176 +1,78 @@
-#!/usr/bin/env python3
-"""Descarga los archivos Parquet de 2026 del NYC TLC Trip Record Data.
-
-Descarga los registros de viajes de taxis amarillos (yellow) y verdes (green)
-correspondientes al anio 2026, que es el conjunto de datos inicial del
-laboratorio. Este script solo contempla el anio 2026.
-
-Fuente oficial de los datos:
-    https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
-
-Uso:
-    python scripts/download_data.py                 # amarillos y verdes
-    python scripts/download_data.py --taxi yellow
-    python scripts/download_data.py --taxi green
-
-Los archivos se guardan en:
-    data/raw/<tipo>/<anio>/<nombre-original>.parquet
-
-Comportamiento:
-  - La TLC publica cada mes con varias semanas de atraso, por lo que no todos
-    los meses de 2026 existen todavia. El script consulta al servidor que
-    meses estan publicados en lugar de suponerlos.
-  - Un archivo que ya existe localmente no se vuelve a descargar.
-  - La descarga se hace sobre un nombre temporal y solo se renombra al
-    terminar, de modo que una interrupcion no deja archivos .parquet a medias.
-"""
-
-import argparse
-import sys
+﻿import argparse
+import hashlib
+import json
+import re
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 
+import pyarrow.parquet as pq
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-ANIO = 2026
-TIPOS_TAXI = ("yellow", "green")
-URL_BASE = "https://d37ci6vzurychx.cloudfront.net/trip-data"
-DIR_DESTINO = Path("data/raw")
-
-TIEMPO_ESPERA = 60          # segundos por peticion
-INTENTOS = 3                # intentos por archivo antes de darse por vencido
-BLOQUE = 1024 * 1024        # 1 MiB por bloque de descarga
-SUFIJO_TEMPORAL = ".part"
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
+BASE = "https://d37ci6vzurychx.cloudfront.net/trip-data"
 
 
-def construir_nombre(tipo: str, mes: int) -> str:
-    """Nombre del archivo publicado por la TLC, p. ej. yellow_tripdata_2026-01.parquet."""
-    return f"{tipo}_tripdata_{ANIO}-{mes:02d}.parquet"
+def session():
+    client = requests.Session()
+    client.mount("https://", HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])))
+    return client
 
 
-def construir_url(tipo: str, mes: int) -> str:
-    """URL completa del archivo Parquet mensual."""
-    return f"{URL_BASE}/{construir_nombre(tipo, mes)}"
-
-
-def ruta_destino(tipo: str, mes: int) -> Path:
-    """Ruta local donde se guarda el archivo."""
-    return DIR_DESTINO / tipo / str(ANIO) / construir_nombre(tipo, mes)
-
-
-def esta_publicado(url: str) -> bool:
-    """Indica si el archivo existe en el servidor (sin descargarlo)."""
-    try:
-        respuesta = requests.head(url, timeout=TIEMPO_ESPERA, allow_redirects=True)
-    except requests.RequestException:
-        return False
-    return respuesta.ok
-
-
-def formato_tamanio(n: float) -> str:
-    for unidad in ("B", "KiB", "MiB", "GiB"):
-        if n < 1024 or unidad == "GiB":
-            return f"{n:.1f} {unidad}"
-        n /= 1024
-    return f"{n:.1f} GiB"
-
-
-def descargar_archivo(url: str, destino: Path) -> int:
-    """Descarga `url` en `destino`. Devuelve la cantidad de bytes escritos."""
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    temporal = destino.with_name(destino.name + SUFIJO_TEMPORAL)
-
-    ultimo_error = None
-    for intento in range(1, INTENTOS + 1):
+def acquire(item):
+    taxi, year, month = item
+    name = f"{taxi}_tripdata_{year}-{month}.parquet"
+    path = ROOT / "data" / "raw" / taxi / year / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    status = "existing"
+    if not path.exists():
+        temporary = path.with_suffix(".part")
         try:
-            with requests.get(url, stream=True, timeout=TIEMPO_ESPERA) as respuesta:
-                respuesta.raise_for_status()
-                escritos = 0
-                with temporal.open("wb") as archivo:
-                    for bloque in respuesta.iter_content(chunk_size=BLOQUE):
-                        if bloque:
-                            archivo.write(bloque)
-                            escritos += len(bloque)
-            if escritos == 0:
-                raise requests.RequestException("el servidor devolvio un archivo vacio")
-            temporal.replace(destino)
-            return escritos
-        except requests.RequestException as error:
-            ultimo_error = error
-            temporal.unlink(missing_ok=True)
-            if intento < INTENTOS:
-                print(f"      intento {intento}/{INTENTOS} fallido ({error}); reintentando")
-
-    raise requests.RequestException(f"no se pudo descargar {url}: {ultimo_error}")
-
-
-def descargar(tipo: str) -> dict:
-    """Descarga todos los meses publicados de un tipo de taxi para 2026."""
-    print(f"\n=== {tipo.upper()} {ANIO} ===")
-    resumen = {"descargados": 0, "omitidos": 0, "no_publicados": [], "fallidos": []}
-
-    for mes in range(1, 13):
-        etiqueta = f"{ANIO}-{mes:02d}"
-        destino = ruta_destino(tipo, mes)
-
-        if destino.exists() and destino.stat().st_size > 0:
-            print(f"  {etiqueta}  ya existe, se omite")
-            resumen["omitidos"] += 1
-            continue
-
-        url = construir_url(tipo, mes)
-        if not esta_publicado(url):
-            print(f"  {etiqueta}  aun no publicado por la TLC")
-            resumen["no_publicados"].append(etiqueta)
-            continue
-
-        print(f"  {etiqueta}  descargando...")
-        try:
-            escritos = descargar_archivo(url, destino)
-        except requests.RequestException as error:
-            print(f"  {etiqueta}  ERROR: {error}")
-            resumen["fallidos"].append(etiqueta)
-        else:
-            print(f"  {etiqueta}  listo ({formato_tamanio(escritos)}) -> {destino}")
-            resumen["descargados"] += 1
-
-    return resumen
+            with session().get(f"{BASE}/{name}", stream=True, timeout=(20, 120)) as response:
+                response.raise_for_status()
+                with temporary.open("wb") as output:
+                    for block in response.iter_content(1024 * 1024):
+                        output.write(block)
+                expected = response.headers.get("Content-Length")
+                if expected and temporary.stat().st_size != int(expected):
+                    raise ValueError(f"Incomplete download: {name}")
+            pq.ParquetFile(temporary)
+            temporary.replace(path)
+            status = "downloaded"
+        finally:
+            temporary.unlink(missing_ok=True)
+    metadata = pq.ParquetFile(path).metadata
+    with path.open("rb") as stream:
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    print(f"{status}: {name} ({metadata.num_rows:,} rows)", flush=True)
+    return {"taxi": taxi, "year": int(year), "month": int(month), "file": path.relative_to(ROOT).as_posix(), "url": f"{BASE}/{name}", "status": status, "bytes": path.stat().st_size, "rows": metadata.num_rows, "sha256": digest}
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=f"Descarga los datos de taxis de {ANIO} del NYC TLC."
-    )
-    parser.add_argument(
-        "--taxi", choices=(*TIPOS_TAXI, "all"), default="all",
-        help="tipo de taxi a descargar (por defecto: all)",
-    )
-    argumentos = parser.parse_args()
-
-    tipos = TIPOS_TAXI if argumentos.taxi == "all" else (argumentos.taxi,)
-
-    total = {"descargados": 0, "omitidos": 0, "no_publicados": [], "fallidos": []}
-    for tipo in tipos:
-        resumen = descargar(tipo)
-        total["descargados"] += resumen["descargados"]
-        total["omitidos"] += resumen["omitidos"]
-        total["no_publicados"] += [f"{tipo} {m}" for m in resumen["no_publicados"]]
-        total["fallidos"] += [f"{tipo} {m}" for m in resumen["fallidos"]]
-
-    print("\n" + "=" * 60)
-    print("RESUMEN")
-    print("=" * 60)
-    print(f"  descargados   : {total['descargados']}")
-    print(f"  ya existian   : {total['omitidos']}")
-    print(f"  no publicados : {len(total['no_publicados'])}")
-    if total["no_publicados"]:
-        print(f"      {', '.join(total['no_publicados'])}")
-    print(f"  fallidos      : {len(total['fallidos'])}")
-    if total["fallidos"]:
-        print(f"      {', '.join(total['fallidos'])}")
-    print("=" * 60)
-
-    return 1 if total["fallidos"] else 0
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--years", nargs="+", type=int, default=[2026])
+    parser.add_argument("--taxi", choices=["all", "yellow", "green"], default="all")
+    parser.add_argument("--workers", type=int, default=4)
+    args = parser.parse_args()
+    response = session().get(SOURCE, timeout=60)
+    response.raise_for_status()
+    published = set(re.findall(r"(yellow|green)_tripdata_(\d{4})-(\d{2})\.parquet", response.text))
+    wanted = sorted(item for item in published if int(item[1]) in args.years and (args.taxi == "all" or item[0] == args.taxi))
+    for year in args.years:
+        for taxi in (["yellow", "green"] if args.taxi == "all" else [args.taxi]):
+            months = [int(m) for t, y, m in wanted if t == taxi and int(y) == year]
+            if not months or (year < 2026 and len(months) != 12):
+                raise ValueError(f"Incomplete published inventory: {taxi} {year}: {months}")
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        files = list(executor.map(acquire, wanted))
+    manifest = {"checked_at_utc": datetime.now(timezone.utc).isoformat(), "source": SOURCE, "years": args.years, "expected_files": len(wanted), "verified_files": len(files), "files": files, "unpublished": [f"{taxi} {year}-{month:02d}" for year in args.years for taxi in (["yellow", "green"] if args.taxi == "all" else [args.taxi]) for month in range(1, 13) if (taxi, str(year), f"{month:02d}") not in published]}
+    output = ROOT / "docs" / f"download_{'_'.join(map(str, args.years))}.json"
+    output.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(f"Verified {len(files)}/{len(wanted)} published files. Manifest: {output}")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
