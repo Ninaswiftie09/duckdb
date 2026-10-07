@@ -24,6 +24,11 @@ QUESTIONS = [
 def table(frame):
     values = frame.copy()
     for column in values.select_dtypes(include="number"):
+        if column in ["source_year", "source_month", "hour", "payment_type", "pickup_zone"]:
+            continue
+        if column in ["rows", "trips", "files"]:
+            values[column] = values[column].map(lambda v: f"{int(v):,}")
+            continue
         values[column] = values[column].map(lambda v: f"{v:,.3f}" if isinstance(v, float) else f"{v:,}")
     return "| " + " | ".join(values.columns) + " |\n| " + " | ".join("---" for _ in values.columns) + " |\n" + "\n".join("| " + " | ".join(str(v) for v in row) + " |" for row in values.itertuples(index=False, name=None))
 
@@ -62,7 +67,15 @@ def main():
     pivot = benchmarks.pivot(index=["files", "query"], columns="mode", values="median")
     for (size, query), row in pivot.iterrows():
         parts.append(f"Con {size} archivos, {query} tardó {row['parquet']:.4f} s en Parquet y {row['duckdb']:.4f} s en la tabla. La relación Parquet/tabla fue {row['parquet']/row['duckdb']:.2f}.")
-    parts.extend(["Los tiempos cambian con el volumen, la compresión, el tipo de consulta y la caché. No se asume que una estrategia sea siempre mejor. Parquet permite explorar archivos nuevos sin una carga previa ni una segunda copia de los datos. Una tabla puede servir para consultas repetidas y para Metabase, pero requiere tiempo de creación, espacio adicional y actualización al incorporar datos nuevos.", "## Ejercicio 7: indicadores y tablero", "Se definieron doce preguntas y seis indicadores: cantidad mensual de viajes, pago promedio, distancia promedio, duración promedio, viajes por hora y formas de pago. Cada tarjeta usa una consulta en sql/indicator_*.sql. El tablero se creó en Metabase y su verificación está en dashboard/metabase_validation.json. dashboard/dashboard.png permite revisar los seis indicadores sin abrir el servicio. Los indicadores se calculan con datos filtrados; las cifras de coverage corresponden a datos originales."])
+    materialization = pd.read_csv(RESULTS / "materialization.csv")
+    largest = int(materialization.files.max())
+    largest_times = pivot.loc[largest]
+    savings = (largest_times.parquet - largest_times.duckdb).sum()
+    if savings > 0:
+        rounds = materialization.loc[materialization.files == largest, "materialization_seconds"].iloc[0] / savings
+        parts.append(f"Con {largest} archivos, el costo de materialización se compensaría después de aproximadamente {rounds:.1f} rondas de las tres consultas, si se mantienen estas medianas. Esta estimación no incluye actualizaciones ni operaciones adicionales.")
+    parts.append("Los tiempos sobre Parquet incluyen la unificación de fechas y el cálculo de duración. La tabla conserva esos campos precalculados. Se separó el costo de crear la tabla para evaluar ese trabajo inicial.")
+    parts.extend(["El costo de crear las tablas se registró por separado:", table(pd.read_csv(RESULTS / "materialization.csv")), "Se repitió el benchmark de forma aislada después de observar presión de memoria con otros procesos. El informe usa únicamente esa repetición completa. Aun así, se observa variación entre mínimos y máximos, por lo que la mediana describe mejor estas mediciones que un solo tiempo.", "Los tiempos cambian con el volumen, la compresión, el tipo de consulta y la caché. No se asume que una estrategia sea siempre mejor. Parquet permite explorar archivos nuevos sin una carga previa ni una segunda copia de los datos. Una tabla puede servir para consultas repetidas y para Metabase, pero requiere tiempo de creación, espacio adicional y actualización al incorporar datos nuevos.", "## Ejercicio 7: indicadores y tablero", "Se definieron doce preguntas y seis indicadores: cantidad mensual de viajes, pago promedio, distancia promedio, duración promedio, viajes por hora y formas de pago. Cada tarjeta usa una consulta en sql/indicator_*.sql. El tablero se creó en Metabase y su verificación está en dashboard/metabase_validation.json. dashboard/dashboard.png permite revisar los seis indicadores sin abrir el servicio. Los indicadores se calculan con datos filtrados; las cifras de coverage corresponden a datos originales."])
     for taxi in ["yellow", "green"]:
         group = monthly[monthly.taxi == taxi]
         weights = group.trips

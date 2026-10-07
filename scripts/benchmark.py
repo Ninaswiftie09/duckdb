@@ -24,10 +24,12 @@ def main():
         path = ROOT / "data" / "processed" / "benchmark.duckdb"
         con = connect(path)
         views(con, subset)
+        print(f"Materializing {size} files", flush=True)
         start = time.perf_counter()
         con.execute("CREATE OR REPLACE TABLE trips_materialized AS SELECT * FROM trips_raw")
         build = time.perf_counter() - start
         rows = con.execute("SELECT count(*) FROM trips_materialized").fetchone()[0]
+        print(f"Materialized {rows:,} rows in {build:.3f} seconds", flush=True)
         builds.append({"files": size, "rows": rows, "materialization_seconds": build})
         for name in ["monthly", "hourly", "payments"]:
             query = sql(name)

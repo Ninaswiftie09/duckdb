@@ -1,0 +1,3 @@
+taxi,source_year,rows,missing_pickup,wrong_period,invalid_distance,invalid_duration,invalid_total,missing_passengers,zero_passengers,extreme_values
+green,2026,337114,0,98,12212,1521,1566,48775,4527,92
+yellow,2026,29703355,0,146,952231,381810,167093,7716688,91359,1822

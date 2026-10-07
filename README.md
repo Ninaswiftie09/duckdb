@@ -65,6 +65,8 @@ Se comparan 2, 12 y todos los archivos disponibles. Se verifica la igualdad de r
 
 No se vacía la caché del sistema operativo. Se evalúa el caso de consultas repetidas con caché caliente. Los tiempos dependen de la máquina.
 
+Se desactiva la preservación del orden de inserción para limitar el uso de memoria durante la materialización. Las consultas ordenan explícitamente los resultados cuando el orden es relevante.
+
 ## Cómo ejecutar el análisis completo
 
 ```bash
@@ -97,9 +99,12 @@ La conexión usa /workspace/data/processed/taxi.duckdb en modo de solo lectura. 
 ```bash
 docker compose exec -T lab python scripts/write_report.py
 docker compose exec -T lab jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=1200 notebooks/lab8_duckdb.ipynb
+docker compose exec -T lab python scripts/verify_lab.py
 ```
 
 El informe requiere las salidas de las tres etapas y del benchmark. El notebook se puede abrir en JupyterLab y ejecutar de principio a fin. Se incluye una copia ejecutada con resultados. El informe contiene doce preguntas, los hallazgos, la comparación de años, la interpretación de indicadores y las ocho respuestas de discusión.
+
+La verificación final compara la cantidad de registros con los manifiestos, revisa las huellas de archivos anteriores, comprueba que los indicadores sumen el mismo total de viajes válidos y confirma las 54 mediciones y las seis tarjetas de Metabase. El resumen queda en docs/validation.json.
 
 Para repetir todo el flujo se usan los comandos anteriores en orden. Se conserva la configuración de Metabase entre ejecuciones y se revisan los manifiestos para verificar que las descargas anteriores quedaron como existing. El año 2026 es parcial; la comparación temporal usa únicamente los meses presentes en los tres años.
 
