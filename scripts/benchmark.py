@@ -5,6 +5,7 @@ import statistics
 import time
 
 import pandas as pd
+import duckdb
 
 from common import CLEAN, RESULTS, ROOT, connect, files, sql, views
 
@@ -52,7 +53,7 @@ def main():
     frame.to_csv(RESULTS / "benchmark_runs.csv", index=False)
     frame.groupby(["files", "rows", "query", "mode"]).seconds.agg(["median", "min", "max"]).reset_index().to_csv(RESULTS / "benchmark_summary.csv", index=False)
     pd.DataFrame(builds).to_csv(RESULTS / "materialization.csv", index=False)
-    (RESULTS / "benchmark_environment.json").write_text(json.dumps({"platform": platform.platform(), "python": platform.python_version(), "years": args.years, "repeats": args.repeats, "threads": 4, "memory_limit": "2GB", "cache": "warm, one untimed run per query and mode; alternating timed order", "subsets": "sorted file prefixes", "sources": sources}, indent=2), encoding="utf-8")
+    (RESULTS / "benchmark_environment.json").write_text(json.dumps({"platform": platform.platform(), "python": platform.python_version(), "duckdb": duckdb.__version__, "years": args.years, "repeats": args.repeats, "threads": 4, "memory_limit": "2GB", "cache": "warm, one untimed run per query and mode; alternating timed order", "subsets": "file prefixes sorted by year, month, taxi", "sources": sources}, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

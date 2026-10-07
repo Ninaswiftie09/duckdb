@@ -19,6 +19,7 @@ def connect(path=":memory:"):
     con = duckdb.connect(str(path))
     con.execute("SET threads=4")
     con.execute("SET memory_limit='2GB'")
+    con.execute("SET preserve_insertion_order=false")
     return con
 
 
@@ -26,5 +27,12 @@ def views(con, sources):
     if not sources:
         raise ValueError("No Parquet files found")
     quoted = "[" + ",".join("'" + p.replace("'", "''") + "'" for p in sources) + "]"
-    con.execute("CREATE OR REPLACE VIEW trips_raw AS " + sql("normalize").replace("{files}", quoted))
+    query = sql("normalize").replace("{files}", quoted)
+    columns = {row[0] for row in con.execute(f"DESCRIBE SELECT * FROM read_parquet({quoted}, union_by_name=true)").fetchall()}
+    for column in ["tpep_pickup_datetime", "tpep_dropoff_datetime", "lpep_pickup_datetime", "lpep_dropoff_datetime"]:
+        if column not in columns:
+            query = query.replace(column, "CAST(NULL AS TIMESTAMP)")
+    if "cbd_congestion_fee" not in columns:
+        query = query.replace("cbd_congestion_fee", "CAST(NULL AS DOUBLE) AS cbd_congestion_fee")
+    con.execute("CREATE OR REPLACE VIEW trips_raw AS " + query)
     con.execute("CREATE OR REPLACE VIEW trips_clean AS SELECT * FROM trips_raw WHERE " + CLEAN)

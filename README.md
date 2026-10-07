@@ -103,6 +103,16 @@ El informe requiere las salidas de las tres etapas y del benchmark. El notebook 
 
 Para repetir todo el flujo se usan los comandos anteriores en orden. Se conserva la configuración de Metabase entre ejecuciones y se revisan los manifiestos para verificar que las descargas anteriores quedaron como existing. El año 2026 es parcial; la comparación temporal usa únicamente los meses presentes en los tres años.
 
+También se puede ejecutar la descarga, análisis por etapas, benchmark, imagen del tablero e informe con un solo comando, después de detener Metabase:
+
+```bash
+docker compose stop metabase
+docker compose exec -T lab python scripts/run_lab.py
+docker compose start metabase
+```
+
+Después de verificar que Metabase inició, se ejecuta scripts/setup_metabase.py y el notebook con los comandos anteriores. El procesamiento completo puede tardar varios minutos por el volumen de datos.
+
 ## Fuente
 
 [NYC TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page). La TLC advierte que los registros pueden contener errores y que la publicación tiene atraso. Los resultados describen los archivos disponibles, no una garantía de completitud de todos los viajes de Nueva York.

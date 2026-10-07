@@ -46,6 +46,18 @@ def main():
         parts.append(f"En {taxi}, la hora con más viajes es {int(peak['hour']):02d}:00, con {int(peak.trips):,} viajes. Esto permite identificar la hora de mayor actividad dentro de los registros analizados, sin afirmar una causa.")
     totals = coverage.groupby("taxi").rows.sum()
     parts.append(f"Los archivos amarillos contienen {totals['yellow']:,} registros y los verdes {totals['green']:,}. El volumen amarillo es {totals['yellow'] / totals['green']:.2f} veces el verde; esto describe estos archivos y no toda la movilidad de Nueva York.")
+    for taxi in ["yellow", "green"]:
+        group = monthly[monthly.taxi == taxi]
+        peak = group.loc[group.trips.idxmax()]
+        parts.append(f"En {taxi}, el mes con más viajes filtrados fue {int(peak.source_year)}-{int(peak.source_month):02d}, con {int(peak.trips):,} viajes. Se mantiene la serie mensual para observar si el máximo es parte de un patrón repetido.")
+        q = quality[quality.taxi == taxi]
+        parts.append(f"En {taxi}, se encontraron {int(q.wrong_period.sum()):,} fechas fuera del periodo del archivo y {int(q.missing_passengers.sum()):,} valores de pasajeros faltantes. Se filtran las fechas inconsistentes y se conserva el dato de pasajeros sin imputación.")
+        zone = frames["zones"][frames["zones"].taxi == taxi].iloc[0]
+        parts.append(f"La zona de inicio más frecuente en {taxi} tiene ID {int(zone.pickup_zone)}, con {int(zone.trips):,} viajes filtrados. Se mantiene el ID oficial; no se asigna un nombre de barrio sin una tabla de referencia.")
+        for _, row in frames["distribution"][frames["distribution"].taxi == taxi].iterrows():
+            distances = [float(v) for v in str(row.distance_quantiles).strip('[]').replace(',', ' ').split()]
+            payments = [float(v) for v in str(row.total_quantiles).strip('[]').replace(',', ' ').split()]
+            parts.append(f"En {taxi} {int(row.source_year)}, la mediana de distancia fue {distances[1]:.2f} millas y el percentil 95 fue {distances[3]:.2f}. La mediana del pago fue {payments[1]:.2f} USD y el percentil 95 fue {payments[3]:.2f} USD. La separación entre mediana y percentil 95 muestra que los valores altos no describen el viaje habitual.")
     parts.extend(["## Ejercicio 5: incorporación de 2024", "Se ejecutó --years 2024 2026 después de la descarga inicial y se confirmó la cobertura conjunta con coverage.sql. Los 24 archivos de 2024 se incorporaron sin eliminar los de 2026. Se ejecutaron las mismas consultas sobre el conjunto ampliado; sus resultados están en results/2024_2026. La selección de archivos y union_by_name permiten agregar años sin reescribir las consultas. comparable.sql produce una tabla vacía hasta que estén presentes los tres años; esa consulta fue diseñada para la comparación final.", "## Ejercicio 6: benchmark", "Se usaron los datos de 2024 y 2026. Se evaluaron 2, 12 y todos los archivos de esos años. Los prefijos se ordenan por año, mes y tipo para incluir ambos tipos de taxi. No son muestras aleatorias. Para cada tamaño se creó una tabla con todas las columnas normalizadas. Se midieron monthly.sql, hourly.sql y payments.sql con los mismos filtros y se comprobó que sus resultados coincidieran dentro de una tolerancia numérica.", "Se ejecutó una consulta de calentamiento por modo y luego tres repeticiones, alternando el orden. Se midió ejecución y recuperación de resultados; se excluyó la creación de vistas de cada medición. Se fijaron cuatro hilos y un límite de memoria de 2 GB. La caché del sistema operativo no se vació. Los resultados representan consultas repetidas con caché caliente, no lecturas en frío. El tiempo de materialización se registró por separado.", table(benchmarks)])
     pivot = benchmarks.pivot(index=["files", "query"], columns="mode", values="median")
     for (size, query), row in pivot.iterrows():
@@ -58,6 +70,9 @@ def main():
         payments = frames["payments"]
         counts = payments[payments.taxi == taxi].groupby("payment_type").trips.sum()
         parts.append(f"En {taxi}, el código de pago más frecuente es {int(counts.idxmax())}, con {int(counts.max()):,} viajes ({100*counts.max()/counts.sum():.2f}% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año; el código 1 identifica tarjeta.")
+        cards = payments[(payments.taxi == taxi) & (payments.payment_type == 1)]
+        for _, card in cards.iterrows():
+            parts.append(f"En {taxi} {int(card.source_year)}, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue {card.card_tip_percent:.2f}%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.")
     parts.extend(["## Ejercicio 8: tres años y comparación temporal", "Se incorporaron los 24 archivos de 2025 después de validar 2024 y 2026. Se ejecutaron nuevamente las consultas y se actualizó el tablero. Para la comparación entre años se seleccionaron únicamente los meses presentes en 2024, 2025 y 2026. El año 2026 está incompleto y no se compara su total parcial contra doce meses de otro año.", table(comparable)])
     for taxi in ["yellow", "green"]:
         group = comparable[comparable.taxi == taxi].set_index("source_year")
