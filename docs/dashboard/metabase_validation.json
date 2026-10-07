@@ -1,0 +1,43 @@
+{
+  "dashboard_id": 2,
+  "url": "http://localhost:3000/dashboard/2",
+  "database_id": 2,
+  "cards": [
+    {
+      "name": "Viajes mensuales",
+      "card_id": 40,
+      "rows": 64,
+      "status": "completed"
+    },
+    {
+      "name": "Pago promedio",
+      "card_id": 41,
+      "rows": 64,
+      "status": "completed"
+    },
+    {
+      "name": "Distancia promedio",
+      "card_id": 42,
+      "rows": 64,
+      "status": "completed"
+    },
+    {
+      "name": "Duración promedio",
+      "card_id": 43,
+      "rows": 64,
+      "status": "completed"
+    },
+    {
+      "name": "Viajes por hora",
+      "card_id": 44,
+      "rows": 48,
+      "status": "completed"
+    },
+    {
+      "name": "Formas de pago",
+      "card_id": 45,
+      "rows": 12,
+      "status": "completed"
+    }
+  ]
+}

@@ -46,7 +46,9 @@ def main():
     evidence = []
     for index, definition in enumerate(definitions):
         card = next((c for c in existing if c["name"] == definition["name"]), None)
-        payload = {"name": definition["name"], "description": definition["description"], "display": definition["display"], "dataset_query": {"database": database["id"], "type": "native", "native": {"query": definition["sql"], "template-tags": {}}}, "visualization_settings": {"graph.dimensions": [definition["x"], "taxi"], "graph.metrics": [definition["metric"]]}}
+        x_title = {"period": "Fecha", "hour": "Hora", "payment_type": "Forma de pago"}[definition["x"]]
+        y_title = {"trips": "Viajes", "mean_total": "USD", "mean_distance": "Millas", "mean_duration": "Minutos"}[definition["metric"]]
+        payload = {"name": definition["name"], "description": definition["description"], "display": definition["display"], "dataset_query": {"database": database["id"], "type": "native", "native": {"query": definition["sql"], "template-tags": {}}}, "visualization_settings": {"graph.dimensions": [definition["x"], "taxi"], "graph.metrics": [definition["metric"]], "graph.x_axis.title_text": x_title, "graph.y_axis.title_text": y_title}}
         card = call("PUT", f"/card/{card['id']}", payload) if card else call("POST", "/card", payload)
         result = call("POST", f"/card/{card['id']}/query", {})
         if result.get("status") != "completed":

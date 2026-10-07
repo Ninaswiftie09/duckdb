@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Viajes mensuales",
+    "sql": "SELECT CAST(make_date(source_year, source_month, 1) AS DATE) AS period, taxi, trips FROM dashboard_monthly ORDER BY 1, 2",
+    "metric": "trips",
+    "x": "period",
+    "display": "line",
+    "description": "Cantidad de viajes por mes y tipo de taxi. Permite observar cambios en la demanda."
+  },
+  {
+    "name": "Pago promedio",
+    "sql": "SELECT CAST(make_date(source_year, source_month, 1) AS DATE) AS period, taxi, mean_total FROM dashboard_monthly ORDER BY 1, 2",
+    "metric": "mean_total",
+    "x": "period",
+    "display": "line",
+    "description": "Pago total registrado promedio en USD. Incluye recargos y no incluye las propinas en efectivo."
+  },
+  {
+    "name": "Distancia promedio",
+    "sql": "SELECT CAST(make_date(source_year, source_month, 1) AS DATE) AS period, taxi, mean_distance FROM dashboard_monthly ORDER BY 1, 2",
+    "metric": "mean_distance",
+    "x": "period",
+    "display": "line",
+    "description": "Distancia promedio en millas. Permite comparar el tamaño de los recorridos."
+  },
+  {
+    "name": "Duración promedio",
+    "sql": "SELECT CAST(make_date(source_year, source_month, 1) AS DATE) AS period, taxi, mean_duration FROM dashboard_monthly ORDER BY 1, 2",
+    "metric": "mean_duration",
+    "x": "period",
+    "display": "line",
+    "description": "Duración promedio en minutos. Permite comparar el tiempo de cada recorrido."
+  },
+  {
+    "name": "Viajes por hora",
+    "sql": "SELECT hour, taxi, trips FROM dashboard_hourly ORDER BY 1, 2",
+    "metric": "trips",
+    "x": "hour",
+    "display": "line",
+    "description": "Cantidad de viajes según la hora de inicio. Permite identificar horarios de mayor actividad."
+  },
+  {
+    "name": "Formas de pago",
+    "sql": "SELECT CASE payment_type WHEN 0 THEN 'Flex Fare' WHEN 1 THEN 'Tarjeta' WHEN 2 THEN 'Efectivo' WHEN 3 THEN 'Sin cargo' WHEN 4 THEN 'Disputa' WHEN 5 THEN 'Desconocido' WHEN 6 THEN 'Anulado' ELSE 'Sin identificar' END AS payment_type, taxi, sum(trips) AS trips FROM dashboard_payments GROUP BY payment_type, taxi ORDER BY 1, 2",
+    "metric": "trips",
+    "x": "payment_type",
+    "display": "bar",
+    "description": "Cantidad de viajes por forma de pago. Flex Fare es el código 0; tarjeta es 1 y efectivo es 2. Las propinas en efectivo no se registran."
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "published_files": 64,
+  "raw_rows": 121184384,
+  "clean_rows": 115402218,
+  "excluded_rows": 5782166,
+  "incremental_hashes_unchanged": true,
+  "indicator_totals_match": true,
+  "benchmark_timed_runs": 54,
+  "metabase_cards_verified": 6
+}

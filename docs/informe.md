@@ -36,7 +36,7 @@ Los tipos y columnas originales aparecen en results/2024_2025_2026/schema.csv y 
 | yellow | 2025 | 48,722,602 | 0 | 214 | 1,402,958 | 564,705 | 980,522 | 11,611,894 | 260,062 | 3,854 |
 | yellow | 2026 | 29,703,355 | 0 | 146 | 952,231 | 381,810 | 167,093 | 7,716,688 | 91,359 | 1,822 |
 
-Se conservaron todos los archivos originales. Para los indicadores se usó trips_clean: fecha dentro del año y mes del archivo, distancia mayor que 0 y hasta 100 millas, duración mayor que 0 y hasta 180 minutos y pago total mayor que 0 y hasta 500 USD. Los límites son decisiones de análisis y pueden excluir viajes reales largos o caros; no se presentan como reglas oficiales. No se imputaron pasajeros ni propinas. Los problemas de calidad se cuentan por separado y pueden superponerse, por lo que no deben sumarse para calcular registros excluidos. No se eliminaron duplicados porque no existe una identificación única de viaje.
+Se conservaron todos los archivos originales. Para los indicadores se usó trips_clean: fecha dentro del año y mes del archivo, distancia mayor que 0 y hasta 100 millas, duración mayor que 0 y hasta 180 minutos y pago total mayor que 0 y hasta 500 USD. Los límites son decisiones de análisis y pueden excluir viajes reales largos o caros; no se presentan como reglas oficiales. No se imputaron pasajeros ni propinas. Los problemas de calidad se cuentan por separado y pueden superponerse, por lo que no deben sumarse para calcular registros excluidos. Un pago de cero o negativo puede corresponder a un viaje sin cargo, una disputa o un reembolso; se excluye del indicador de viajes pagados, sin afirmar que todos esos registros sean errores. No se eliminaron duplicados porque no existe una identificación única de viaje.
 
 ## Ejercicio 4: preguntas y hallazgos
 
@@ -175,7 +175,7 @@ En yellow 2026, el promedio del porcentaje de propina registrada con tarjeta res
 
 Para green, se analizaron 1,503,848 viajes después de los filtros. El pago promedio ponderado fue 24.76 USD, la distancia promedio 3.12 millas y la duración promedio 15.62 minutos. La ponderación usa la cantidad de viajes de cada mes.
 
-En green, el código de pago más frecuente es 1, con 1,025,479 viajes (73.98% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año; el código 1 identifica tarjeta.
+En green, el código de pago más frecuente es 1, con 1,025,479 viajes (68.19% del total filtrado). Los códigos deben interpretarse usando el diccionario correspondiente a cada tipo y año; el código 1 identifica tarjeta.
 
 En green 2024, el promedio del porcentaje de propina registrada con tarjeta respecto a la tarifa fue 22.37%. Se consideran únicamente tarifas positivas; no se extiende a propinas en efectivo.
 

@@ -1,0 +1,1 @@
+SELECT CASE payment_type WHEN 0 THEN 'Flex Fare' WHEN 1 THEN 'Tarjeta' WHEN 2 THEN 'Efectivo' WHEN 3 THEN 'Sin cargo' WHEN 4 THEN 'Disputa' WHEN 5 THEN 'Desconocido' WHEN 6 THEN 'Anulado' ELSE 'Sin identificar' END AS payment_type, taxi, sum(trips) AS trips FROM dashboard_payments GROUP BY payment_type, taxi ORDER BY 1, 2;
