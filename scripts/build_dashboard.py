@@ -26,6 +26,7 @@ def main():
     con = connect(path)
     views(con, files(args.years))
     con.execute("CREATE OR REPLACE TABLE trips_materialized AS SELECT * FROM trips_raw")
+    con.execute("CREATE OR REPLACE VIEW trips_raw AS SELECT * FROM trips_materialized")
     con.execute("CREATE OR REPLACE VIEW trips_clean AS SELECT * FROM trips_materialized WHERE " + CLEAN)
     datasets = {}
     for name in ["monthly", "hourly", "payments", "quality", "comparable"]:

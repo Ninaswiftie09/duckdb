@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--repeats", type=int, default=3)
     args = parser.parse_args()
     RESULTS.mkdir(parents=True, exist_ok=True)
-    sources = files(args.years)
+    sources = sorted(files(args.years), key=lambda p: (p.split('/')[-2], p.split('/')[-1].split('_')[-1], p.split('/')[-3]))
     records = []
     builds = []
     for size in sorted(set([2, min(12, len(sources)), len(sources)])):

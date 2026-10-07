@@ -1,0 +1,197 @@
+{
+  "checked_at_utc": "2026-10-07T02:02:54.426692+00:00",
+  "source": "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
+  "years": [
+    2026
+  ],
+  "expected_files": 16,
+  "verified_files": 16,
+  "files": [
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 1,
+      "file": "data/raw/green/2026/green_tripdata_2026-01.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-01.parquet",
+      "status": "downloaded",
+      "bytes": 991656,
+      "rows": 40272,
+      "sha256": "b0b188cd9ded91a9dfc931d9250aaca09fe388355d87802422707c6fc14762e0"
+    },
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 2,
+      "file": "data/raw/green/2026/green_tripdata_2026-02.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-02.parquet",
+      "status": "downloaded",
+      "bytes": 920753,
+      "rows": 37373,
+      "sha256": "2f7e3f379b2a14d675aed7eb9318a663dfb290eb11dbc66efbee581b63c3c962"
+    },
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 3,
+      "file": "data/raw/green/2026/green_tripdata_2026-03.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-03.parquet",
+      "status": "downloaded",
+      "bytes": 1082530,
+      "rows": 44208,
+      "sha256": "60c8bdfc0aa7826a2d6d2a6cca0f0e0dcb2d8aa7336212a45382794bb55b9cc0"
+    },
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 4,
+      "file": "data/raw/green/2026/green_tripdata_2026-04.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-04.parquet",
+      "status": "downloaded",
+      "bytes": 1075896,
+      "rows": 44238,
+      "sha256": "e8dd2a0afde3fe8be942dd638fe1d946f8edbe5b377cf6c1d645e1206b3c7662"
+    },
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 5,
+      "file": "data/raw/green/2026/green_tripdata_2026-05.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-05.parquet",
+      "status": "downloaded",
+      "bytes": 1102947,
+      "rows": 44921,
+      "sha256": "15ff57840a1103d49298ad244492730ca4236b4de0d2758a689ded08bc332752"
+    },
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 6,
+      "file": "data/raw/green/2026/green_tripdata_2026-06.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-06.parquet",
+      "status": "downloaded",
+      "bytes": 1075836,
+      "rows": 44163,
+      "sha256": "08e214dcb285cb5cecb183635080e817ca24f0c6491eb7d387513fbe38258f97"
+    },
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 7,
+      "file": "data/raw/green/2026/green_tripdata_2026-07.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-07.parquet",
+      "status": "downloaded",
+      "bytes": 1018250,
+      "rows": 41252,
+      "sha256": "1e01084ab77643cc94e53ad7c30163dd7e8ef0be7b5bbf62bd45c19b7580ee87"
+    },
+    {
+      "taxi": "green",
+      "year": 2026,
+      "month": 8,
+      "file": "data/raw/green/2026/green_tripdata_2026-08.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2026-08.parquet",
+      "status": "downloaded",
+      "bytes": 1007530,
+      "rows": 40687,
+      "sha256": "73539b4c19d1fc7e00a3809b09f0c1704283cff50398a022d9a01282c310e538"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 1,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-01.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-01.parquet",
+      "status": "downloaded",
+      "bytes": 64165080,
+      "rows": 3724889,
+      "sha256": "8b3933fe6f0d7b6d8826613c0dd724edc680ff7c49e2bd4c7635c05102728637"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 2,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-02.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-02.parquet",
+      "status": "downloaded",
+      "bytes": 58683353,
+      "rows": 3399866,
+      "sha256": "5352ca800f29c40a221ed5b0c6392c451fde7fcd236a73651bd5aea74713a26c"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 3,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-03.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-03.parquet",
+      "status": "downloaded",
+      "bytes": 67891249,
+      "rows": 3952451,
+      "sha256": "d7af794a7ac06cbbb5afb4d1df9e86d84f2e878584de708ff2ffca4bd7d234d9"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 4,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-04.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-04.parquet",
+      "status": "downloaded",
+      "bytes": 64818115,
+      "rows": 3831240,
+      "sha256": "e03b82d5722a6b21d4fbce011afd8837495202c0b5db77ff0d8d15dd80834ba8"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 5,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-05.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-05.parquet",
+      "status": "downloaded",
+      "bytes": 69699174,
+      "rows": 4090836,
+      "sha256": "9aa5a1609e2bf07d9051b7d530de05b1019e12a560ecb2c59c137c8b3a8b6750"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 6,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-06.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-06.parquet",
+      "status": "downloaded",
+      "bytes": 65465637,
+      "rows": 3837248,
+      "sha256": "f340c62a18885c56176433c9db28e97d0a8a14e6e49869276ad8afb20ebf088b"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 7,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-07.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-07.parquet",
+      "status": "downloaded",
+      "bytes": 61685033,
+      "rows": 3530109,
+      "sha256": "3260bb629c2f334055f8a566cbb02c15476b15120c45d7ad0aae46fc4bb06612"
+    },
+    {
+      "taxi": "yellow",
+      "year": 2026,
+      "month": 8,
+      "file": "data/raw/yellow/2026/yellow_tripdata_2026-08.parquet",
+      "url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-08.parquet",
+      "status": "downloaded",
+      "bytes": 59043961,
+      "rows": 3336716,
+      "sha256": "6683a025443afcbb28ac4f238fcbb6334767dc69fab4a16b1eb16a78dcd013cd"
+    }
+  ],
+  "unpublished": [
+    "yellow 2026-09",
+    "yellow 2026-10",
+    "yellow 2026-11",
+    "yellow 2026-12",
+    "green 2026-09",
+    "green 2026-10",
+    "green 2026-11",
+    "green 2026-12"
+  ]
+}
