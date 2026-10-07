@@ -8,7 +8,7 @@ JupyterLab y Metabase responden correctamente. El ambiente incluye Python, DuckD
 
 ## 2. Descarga inicial
 
-2026 contiene 16 archivos y 30,040,469 registros de los meses publicados. Todos los enlaces publicados tienen un Parquet local válido. Los archivos existentes permanecen sin cambios.
+Contiene 16 archivos y 30,040,469 registros de los meses publicados. Todos los enlaces publicados tienen un Parquet local válido. Los archivos existentes permanecen sin cambios.
 
 El descargador acepta varios años, identifica los meses publicados y omite archivos existentes. Cada descarga incluye tamaño, cantidad de registros y una huella SHA-256.
 
